@@ -69,6 +69,9 @@ all 365 days, no scrolling on a desktop window.
   hovered day, and the next day — each with its events listed in full (title,
   and start time for timed events). The year view is bars and lines at a
   glance; the panel is how you read what is in them without leaving it.
+- **Touch devices have no hover, so there the panel is tap-driven**: the first
+  tap on a day raises the panel, a second tap on the same day opens that day
+  in the calendar view, and a tap anywhere else dismisses it.
 - `<` `>` in the header step the year. Clicking a day returns to the calendar
   view positioned on that day — the year view is an overview and a navigator.
 
@@ -78,6 +81,10 @@ all 365 days, no scrolling on a desktop window.
   layered over the month band so both remain readable.
 - Each month gets an alternating neutral background band, applied per day
   column. A week straddling a boundary shows both bands side by side.
+- The sticky header carries, left to right: the month(s) or year in view, the
+  year steppers (year view only), the Cal/Year view toggle, the 15/30/45 snap
+  selector (calendar view only), a Today button, and a Sign in button that
+  shows only when there is no token.
 - Sticky header strip shows the month(s) currently in view — "March 2027", or
   "Feb – Mar 2027" when the view straddles a boundary, which at rest it does.
   It cross-fades as the visible range changes.
@@ -207,6 +214,8 @@ calendar `primary`.
 - On a phone, double-tapping a day never zooms the page
 - Year view shows all 365 days at once on a desktop window, week-aligned,
   with month badges and today marked; clicking a day returns to that day
+- Hovering a day in the year view (tapping, on a phone) shows that day with
+  the day either side of it, events listed in full
 - Scroll a year into the past: months load in as approached, no jank, no
   unbounded DOM growth
 - Create a 3-week all-day commitment → renders as a wrapping bar across three

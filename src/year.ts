@@ -30,25 +30,41 @@ const clickListeners: Array<(day: DayNumber) => void> = [];
 
 export function initYear(container: HTMLElement): void {
   host = container;
-  host.addEventListener('click', (e) => {
-    const cell = (e.target as Element | null)?.closest<HTMLElement>('.ycell');
-    if (!cell?.dataset.day) return;
-    const day = Number(cell.dataset.day) as DayNumber;
-    for (const fn of clickListeners) fn(day);
-  });
+  // A touch device has no hover, so the panel is tap-driven there instead:
+  // first tap on a day reveals it, second tap on the same day opens the
+  // calendar. On a pointer device a tap goes straight through.
+  const canHover = window.matchMedia('(hover: hover)').matches;
 
-  host.addEventListener('mouseover', (e) => {
+  host.addEventListener('click', (e) => {
     const cell = (e.target as Element | null)?.closest<HTMLElement>('.ycell');
     if (!cell?.dataset.day) {
       hidePanel();
       return;
     }
     const day = Number(cell.dataset.day);
-    if (day === popoverDay) return; // same cell: nothing to rebuild
-    popoverDay = day;
-    showPanel(cell, day as DayNumber);
+    if (!canHover && day !== popoverDay) {
+      popoverDay = day;
+      showPanel(cell, day as DayNumber);
+      return;
+    }
+    hidePanel();
+    for (const fn of clickListeners) fn(day as DayNumber);
   });
-  host.addEventListener('mouseleave', hidePanel);
+
+  if (canHover) {
+    host.addEventListener('mouseover', (e) => {
+      const cell = (e.target as Element | null)?.closest<HTMLElement>('.ycell');
+      if (!cell?.dataset.day) {
+        hidePanel();
+        return;
+      }
+      const day = Number(cell.dataset.day);
+      if (day === popoverDay) return; // same cell: nothing to rebuild
+      popoverDay = day;
+      showPanel(cell, day as DayNumber);
+    });
+    host.addEventListener('mouseleave', hidePanel);
+  }
   host.addEventListener('scroll', hidePanel, { passive: true });
 }
 

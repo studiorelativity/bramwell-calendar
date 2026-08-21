@@ -33,7 +33,11 @@ month detents, alternating month bands.
    now `maximum-scale=1, user-scalable=no`: the scroller owns the gesture, so
    the browser must not also claim it.
 
-## Gate (human, on a real phone + desktop) — NOT YET RUN
+## Gate — CLOSED 2026-08-21
+
+Human sign-off on device: "it is usable", zoom confirmed fixed on mobile.
+Stage 04 unblocked. Per-criterion detail below is from the build's own
+verification; the human ran it on a real phone and desktop and passed it.
 
 | Gate criterion | Status |
 |---|---|
@@ -312,4 +316,15 @@ a later moment. Same class of thing could affect the day drawer in stage 04.
    whether that is useful or whether 14 columns would be better there.
 10. **Hover panel**: hover across a busy week and confirm it keeps up, lands
     the right way round near the screen edges, and never blocks the cell you
-    are trying to hover next. Note that it is desktop-only.
+    are trying to hover next.
+
+**Gate closed 2026-08-21.** Phone panel is now tap-driven (first tap reveals,
+second tap on the same day opens the calendar) — decided after the device
+test, since a touch device has no hover.
+
+### Carry-forward to stage 04
+- Days with more than three events show only three bars in the year grid; the
+  panel lists them all. Revisit only if it bites.
+- A background refresh silently destroying transient UI is invisible to a DOM
+  snapshot — it cost a real bug here. The day drawer is exposed to exactly the
+  same failure mode.
