@@ -1,10 +1,10 @@
 // STAGE 01 — implemented in full. Shared vocabulary for stages 02-04.
 //
 // Date model (see conventions.md):
-//   Storage/identity  -> DayNumber, an absolute civil-date integer. Stable
-//                        across midnight, sessions, and cache reloads.
-//   Layout/scroll     -> WeekIndex + DayOffset, relative to the session
-//                        anchor (week 0 = week containing today at launch).
+//   Storage  -> DayNumber, an absolute epoch-anchored civil-date integer.
+//               Stable across midnight, sessions, and cache reloads.
+//   Layout   -> WeekIndex + DayOffset, derived relative to today. NEVER
+//               persisted. Conversion lives in state.ts only.
 // Date objects appear only at the API boundary (gcal.ts) and the display
 // boundary (render.ts / drawer.ts). Nothing else constructs one.
 

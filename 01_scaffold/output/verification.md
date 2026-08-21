@@ -36,7 +36,12 @@ shapes.
    layout/scroll coordinate, derived from `DayNumber` by a pure function in
    `state.ts`. Date objects still appear only at the API and display
    boundaries, which is what the rule is protecting.
-   → If this holds through stage 03, conventions.md should be reworded.
+   → **Resolved 2026-08-20:** ratified by the human and written into
+   conventions.md — "storage uses DayNumber (absolute, epoch-anchored).
+   WeekIndex/DayOffset are layout-time derivations relative to today; never
+   persisted. Conversion lives in state.ts only." Audited: no persisted
+   shape carries a WeekIndex, and WeekIndex appears outside `state.ts` only
+   in `scroll.ts`/`render.ts`.
 
 2. **Week starts Monday**, `DayOffset` 0=Mon … 5=Sat, 6=Sun. The spec only
    says weekend columns get a shade; Monday-start keeps Sat/Sun adjacent as
@@ -76,8 +81,7 @@ first**, then create it (fix upstream, don't just drop a file in).
 
 - `src/types.ts` against the spec's Auth / Calendar API / Categories
   sections — the gate's human check.
-- Decision 1 in particular: it is the one place this stage read the
-  conventions against their letter.
+- ~~Decision 1~~ — resolved; conventions.md now carries the reworded rule.
 
 ## Blocking human step before stage 02
 
