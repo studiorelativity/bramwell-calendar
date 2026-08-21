@@ -341,6 +341,12 @@ export function initScroll(container: HTMLElement): void {
   scrollToWeek(0 as WeekIndex, false);
 }
 
+/** Force the header to repaint — used when returning from the year view. */
+export function invalidateHeader(): void {
+  lastLabelKey = '';
+  paint();
+}
+
 /** The week rows currently realized in the DOM. */
 export function renderWindow(): WeekRange {
   const first = Math.floor(s) - BUFFER_ROWS;

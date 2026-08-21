@@ -282,12 +282,10 @@ function rangeLabel(first: WeekIndex, last: WeekIndex): string {
   return `${MONTHS_SHORT[a.month - 1]} ${a.year} – ${MONTHS_SHORT[b.month - 1]} ${b.year}`;
 }
 
-/** Cross-fade the sticky header to the months currently in view. */
-export function renderMonthHeader(first: WeekIndex, last: WeekIndex): void {
+/** Cross-fade the sticky header to arbitrary text. The year view uses this. */
+export function setHeaderLabel(text: string): void {
   labelHost ??= document.querySelector<HTMLElement>('.mlabel');
   if (!labelHost) return;
-
-  const text = rangeLabel(first, last);
   if (text === currentLabel) return;
   currentLabel = text;
 
@@ -301,4 +299,9 @@ export function renderMonthHeader(first: WeekIndex, last: WeekIndex): void {
   labelHost.append(span);
   // Next frame, so the transition has a from-state to run from.
   requestAnimationFrame(() => span.classList.remove('out'));
+}
+
+/** Cross-fade the sticky header to the months currently in view. */
+export function renderMonthHeader(first: WeekIndex, last: WeekIndex): void {
+  setHeaderLabel(rangeLabel(first, last));
 }

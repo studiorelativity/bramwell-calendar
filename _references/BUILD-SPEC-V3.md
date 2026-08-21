@@ -48,6 +48,26 @@ is legible all the time.
 
 On first load the view rests on the boundary nearest today, with today marked.
 
+## Year view
+
+A second view, toggled from the header, showing one calendar year at once —
+all 365 days, no scrolling on a desktop window.
+
+- A continuous **week-aligned grid, four weeks (28 day columns) per row**, so
+  columns cycle Mon-Sun four times and every row is exactly four weeks. The
+  first row is **indented by the weekday of 1 January**, so week alignment
+  holds down the whole year and every column is the same weekday throughout.
+- Narrow viewports fall back to 14 or 7 columns — both multiples of 7, so the
+  alignment survives on a phone.
+- Each cell carries: weekday abbreviation, day number, a **month badge on the
+  1st**, the same alternating month band and weekend shade as the main view,
+  and thin category-coloured bars for that day's events. Longest event first,
+  so a multi-day event occupies the same lane in every cell it covers and
+  reads as a continuous run across the row.
+- Today is marked as strongly as in the main view.
+- `<` `>` in the header step the year. Clicking a day returns to the calendar
+  view positioned on that day — the year view is an overview and a navigator.
+
 ## Layout details
 
 - 7 equal columns. Weekend columns (Sat/Sun) get a subtle background shade,
@@ -124,6 +144,7 @@ honor `prefers-color-scheme` with the same restraint.
 /src/state.ts       — event cache, week-index math, localStorage persistence
 /src/scroll.ts      — virtualizer, month-snap physics
 /src/render.ts      — week rows, bars, lane packing, month labels, header
+/src/year.ts        — year view: 365-day week-aligned grid
 /src/drawer.ts      — day drawer + event form (port from v2)
 /src/categories.ts  — category <-> colorId mapping
 /src/sw.ts          — service worker
@@ -178,6 +199,8 @@ calendar `primary`.
 - Flick-scroll three months ahead: smooth 60fps, momentum settles softly onto
   a centred anchor at the selected 15/30/45 granularity, month header updates
 - On a phone, double-tapping a day never zooms the page
+- Year view shows all 365 days at once on a desktop window, week-aligned,
+  with month badges and today marked; clicking a day returns to that day
 - Scroll a year into the past: months load in as approached, no jank, no
   unbounded DOM growth
 - Create a 3-week all-day commitment → renders as a wrapping bar across three

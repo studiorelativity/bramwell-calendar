@@ -25,8 +25,12 @@ The hard stage. Expect iteration; keep the human in the loop on motion feel.
    with longest-first lane packing, timed-event chips sorted by start time,
    inline month boundary rules, sticky cross-fading header naming the
    month(s) in view, today marker, Today button, 15/30/45 snap selector.
-3. Wire into `main.ts`: first load rests on the boundary nearest today, today
-   marked.
+3. `src/year.ts` — year view: week-aligned 28-column grid (14/7 on narrow
+   viewports), first row indented by the weekday of 1 January, month badges,
+   bands, today marker, per-day event bars, year stepping. Clicking a day
+   returns to the calendar view on that day.
+4. Wire into `main.ts`: first load rests on the boundary nearest today, today
+   marked; header toggles between calendar and year view.
 
 ## Constraints
 - Transform-based positioning only. No layout reads in the scroll handler —
@@ -56,5 +60,7 @@ The hard stage. Expect iteration; keep the human in the loop on motion feel.
   count stays bounded (verify in devtools)
 - A 3-week all-day event renders as a wrapping bar across three week rows
 - Today button returns and snaps from anywhere
+- Year view: all 365 days visible at once on a desktop window, week columns
+  aligned all the way down, clicking a day returns to it in the calendar view
 - Desktop: no day number clipped at the left edge, at any window width
 - Phone: double-tapping a day does not zoom the page

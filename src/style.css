@@ -79,7 +79,19 @@ body {
   display: none;
 }
 
-.steps {
+/* These set `display`, which overrides the UA stylesheet's [hidden] rule.
+   Re-assert it or the header controls never actually hide. */
+#calendar[hidden],
+#year[hidden],
+.steps[hidden],
+.views[hidden],
+.yearnav[hidden],
+.dow[hidden] {
+  display: none;
+}
+
+.steps,
+.views {
   display: flex;
   border: 1px solid var(--rule);
   border-radius: 999px;
@@ -87,7 +99,8 @@ body {
   pointer-events: auto;
 }
 
-.step {
+.step,
+.view {
   border: 0;
   background: transparent;
   color: var(--ink-muted);
@@ -97,13 +110,21 @@ body {
   cursor: pointer;
 }
 
-.step + .step {
+.step + .step,
+.view + .view {
   border-left: 1px solid var(--rule);
 }
 
-.step[aria-pressed='true'] {
+.step[aria-pressed='true'],
+.view[aria-pressed='true'] {
   background: var(--ink);
   color: var(--surface);
+}
+
+.yearnav {
+  display: flex;
+  gap: 6px;
+  pointer-events: auto;
 }
 
 .dow {
@@ -332,4 +353,112 @@ pre.selftest {
   padding: 1.5rem;
   font: 13px/1.7 ui-monospace, monospace;
   white-space: pre-wrap;
+}
+
+/* --- year view ------------------------------------------------------------ */
+
+#year {
+  position: fixed;
+  inset: 0;
+  overflow: auto;
+  background: var(--surface);
+}
+
+.ygrid {
+  display: grid;
+  grid-template-columns: repeat(var(--ycols), 1fr);
+  grid-auto-rows: minmax(46px, 1fr);
+  gap: 1px;
+  padding: 1px;
+  min-height: 100%;
+  box-sizing: border-box;
+  background: var(--rule);
+}
+
+.ycell {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  align-content: flex-start;
+  gap: 2px 3px;
+  padding: 4px 4px;
+  font-size: 10px;
+  line-height: 1.2;
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--band-a);
+}
+
+.ycell[data-band='1'] {
+  background: var(--band-b);
+}
+
+.ycell[data-we='1'] {
+  background: var(--band-a-we);
+}
+
+.ycell[data-band='1'][data-we='1'] {
+  background: var(--band-b-we);
+}
+
+/* Leading/trailing padding cells sit outside the year entirely. */
+.ycell.blank {
+  background: var(--surface);
+  cursor: default;
+}
+
+.ycell:not(.blank):hover {
+  outline: 1px solid var(--cat-work);
+  outline-offset: -1px;
+}
+
+/* A month starts here: rule down the leading edge, matching the main view. */
+.ycell[data-first='1'] {
+  box-shadow: inset 2px 0 0 var(--ink-muted);
+}
+
+.ydow {
+  color: var(--ink-muted);
+  letter-spacing: 0.02em;
+  font-size: 9px;
+}
+
+.ynum {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.ycell[data-today='1'] .ynum {
+  background: var(--ink);
+  color: var(--surface);
+  border-radius: 999px;
+  padding: 0 5px;
+}
+
+.ymonth {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--surface);
+  background: var(--ink-muted);
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
+/* One thin bar per event, longest-first, so a multi-day event lines up
+   across its cells into a continuous run. */
+.ybars {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 2px;
+}
+
+.ybars i {
+  display: block;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--cat);
 }

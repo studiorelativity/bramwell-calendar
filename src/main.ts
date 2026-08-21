@@ -2,7 +2,7 @@
 
 import './style.css';
 import { isSignedIn, signIn } from './auth.ts';
-import { invalidateWeeks, mountedWeeks } from './render.ts';
+import { invalidateWeeks, mountedWeeks, setHeaderLabel } from './render.ts';
 import {
   initScroll,
   onDayTap,
@@ -11,17 +11,23 @@ import {
   renderWindow,
   scrollToWeek,
   setSnapStep,
+  dockedWeek,
+  invalidateHeader,
 } from './scroll.ts';
 import type { SnapStep } from './scroll.ts';
 import {
   anchorToToday,
+  civilFromDay,
   dayAt,
+  dayFromCivil,
   ensureMonthsFor,
   onCacheChange,
   prefs,
   savePrefs,
   selfTest,
+  weekOf,
 } from './state.ts';
+import { currentYear, initYear, onYearDayClick, renderYear } from './year.ts';
 import type { WeekIndex } from './types.ts';
 
 /** Dev-only: `?selftest` runs the week-index assertions and prints them. */
@@ -49,12 +55,69 @@ function boot(): void {
 
   initScroll(calendar);
 
+  const yearHost = document.getElementById('year');
+  if (!yearHost) throw new Error('#year is missing from index.html');
+  initYear(yearHost);
+
   // Months arrive lazily as the window moves; state.ts adds the 8-week margin.
   onWindowChange((range) => ensureMonthsFor(range));
   ensureMonthsFor(renderWindow());
 
-  // A month landing in the cache repaints only the rows that are realized.
-  onCacheChange(() => invalidateWeeks(mountedWeeks()));
+  // --- view switching -------------------------------------------------------
+
+  let view: 'calendar' | 'year' = 'calendar';
+  const dowStrip = document.querySelector<HTMLElement>('.dow');
+  const stepsGroup = document.querySelector<HTMLElement>('.steps');
+  const yearNav = document.querySelector<HTMLElement>('.yearnav');
+  const viewButtons = [...document.querySelectorAll<HTMLButtonElement>('.view')];
+
+  /** Load the months a year needs, then paint it. */
+  const showYear = (year: number): void => {
+    ensureMonthsFor({
+      first: weekOf(dayFromCivil(year, 1, 1)),
+      last: weekOf(dayFromCivil(year, 12, 31)),
+    });
+    renderYear(year);
+    setHeaderLabel(String(year));
+  };
+
+  const setView = (next: 'calendar' | 'year'): void => {
+    view = next;
+    const isYear = next === 'year';
+    calendar.hidden = isYear;
+    yearHost.hidden = !isYear;
+    if (dowStrip) dowStrip.hidden = isYear;
+    if (stepsGroup) stepsGroup.hidden = isYear;
+    if (yearNav) yearNav.hidden = !isYear;
+    for (const button of viewButtons) {
+      button.setAttribute('aria-pressed', String(button.dataset.view === next));
+    }
+    if (isYear) showYear(currentYear() || civilFromDay(dayAt(dockedWeek(), 3)).year);
+    else invalidateHeader();
+  };
+
+  for (const button of viewButtons) {
+    button.addEventListener('click', () => setView(button.dataset.view === 'year' ? 'year' : 'calendar'));
+  }
+  document.getElementById('year-prev')?.addEventListener('click', () => showYear(currentYear() - 1));
+  document.getElementById('year-next')?.addEventListener('click', () => showYear(currentYear() + 1));
+
+  // The year view is an overview: clicking a day returns to it in the calendar.
+  onYearDayClick((day) => {
+    setView('calendar');
+    scrollToWeek(weekOf(day), false);
+  });
+
+  // Column count depends on width, so a resize needs a repaint.
+  window.addEventListener('resize', () => {
+    if (view === 'year') renderYear(currentYear());
+  });
+
+  // A month landing in the cache repaints whichever view is showing.
+  onCacheChange(() => {
+    if (view === 'year') renderYear(currentYear());
+    else invalidateWeeks(mountedWeeks());
+  });
 
   onDockChange((week: WeekIndex) => savePrefs({ lastDockedDay: dayAt(week, 0) }));
 

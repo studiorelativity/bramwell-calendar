@@ -74,6 +74,14 @@
     <header id="app-header">
       <div class="hrow">
         <div class="mlabel"></div>
+        <div class="yearnav" hidden>
+          <button id="year-prev" class="hbtn" type="button" aria-label="Previous year">‹</button>
+          <button id="year-next" class="hbtn" type="button" aria-label="Next year">›</button>
+        </div>
+        <div class="views" role="group" aria-label="View">
+          <button class="view" type="button" data-view="calendar" aria-pressed="true">Cal</button>
+          <button class="view" type="button" data-view="year" aria-pressed="false">Year</button>
+        </div>
         <div class="steps" role="group" aria-label="Scroll step in days">
           <button class="step" type="button" data-step="15" aria-pressed="false">15</button>
           <button class="step" type="button" data-step="30" aria-pressed="true">30</button>
@@ -88,6 +96,7 @@
       </div>
     </header>
     <main id="calendar"></main>
+    <section id="year" hidden></section>
     <aside id="drawer" hidden><!-- STAGE 04 --></aside>
     <!-- GIS loader. The script tag lives here so auth.ts stays DOM-free
          (stage 02 constraint); everything else about auth is in auth.ts. -->

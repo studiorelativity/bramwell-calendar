@@ -180,6 +180,57 @@ Three items from the device test.
 `state.ts` needed no change — stage 03 must not modify 02's modules, and an
 optional field keeps its `prefs()` fallback compiling untouched.
 
+## Third revision — 2026-08-21, year view added
+
+Modelled on the HEY calendar year view you sent. Spec gained a **Year view**
+section and `/src/year.ts` joined the file layout **before** the file was
+written — third time the file-layout gap has come up, and the recurring-edit
+log's procedure was followed each time.
+
+**Layout.** A continuous week-aligned grid, four weeks (28 day columns) per
+row, with the first row indented by the weekday of 1 January. That indent is
+what makes every column the same weekday for the whole year. Verified against
+the reference: 2026 begins on a Thursday, so row 1 is
+`_ _ _ | JAN THU 1 | FRI 2 | … | SUN 25` — 3 blanks then 25 days, exactly as
+in the HEY screenshot, and 392 cells over 14 rows.
+
+**Column fallback**, since 28 columns is unusable on a phone. All options are
+multiples of 7, so week alignment survives:
+
+| Window | Columns | Cells | Rows | Days |
+|---|---|---|---|---|
+| 390 x 844 | 7 | 371 | 53 | 365 |
+| 900 x 800 | 14 | 378 | 27 | 365 |
+| 1400 x 900 | 28 | 392 | 14 | 365 |
+| 1920 x 1200 | 28 | 392 | 14 | 365 |
+
+**Also verified**: 12 month badges with a rule down the leading edge of each
+month; today marked; 21 days carrying the seeded 3-week event's bar, which
+reads as one continuous run across the row because bars are sorted
+longest-first and so hold the same lane in every cell; header cross-fades to
+`2026`; the 15/30/45 selector and weekday strip hide, and the year nav shows.
+
+**One defect found and fixed during verification**: `.steps`, `.views`,
+`.dow` and `.yearnav` all set `display`, which overrides the UA stylesheet's
+`[hidden] { display: none }`. Setting `.hidden` on them did nothing — the
+weekday strip stayed on screen, stretched across 28 columns. The rule is now
+re-asserted explicitly for those selectors.
+
+### Decisions
+
+1. **Clicking a day returns to the calendar view on that day**, rather than
+   opening a drawer. The year view is an overview and a navigator. Stage 04
+   may want it to open the drawer instead — its call.
+2. **Events show as up to 3 thin bars per cell**, not spanning bars. True
+   spanning bars across a 28-column row would be better, but per-cell bars
+   sorted longest-first already read as a continuous run, at a fraction of
+   the complexity. Days with more than 3 events silently drop the rest —
+   worth revisiting if it bites.
+3. **No virtualization.** 365 cells rebuild wholesale in one pass; there is
+   nothing to recycle and no scroll position to own.
+4. **Opening the year fetches that year's months** via `ensureMonthsFor`, so
+   a first visit to a distant year will fill in progressively as months land.
+
 ## Human gate checklist
 
 1. Phone. Flick three months. It should move ~30 days per flick and settle
@@ -198,3 +249,7 @@ optional field keeps its `prefs()` fallback compiling untouched.
    `--band-a/b` and `--band-a-we/b-we` in `index.html`.
 6. Scroll a year back; confirm the `.week` node count stays at 14 in devtools.
 7. Today button from a year away.
+8. **Year view**: does it show all 365 days without scrolling on your desktop?
+   Are the event bars readable at that size, or do they need to be thicker?
+9. Year view on the phone drops to 7 columns and becomes a long scroll — check
+   whether that is useful or whether 14 columns would be better there.
