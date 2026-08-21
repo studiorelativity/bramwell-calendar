@@ -9,20 +9,27 @@
 - L4: everything built in 01–03, consumed through existing interfaces
 
 ## Process
-1. `src/drawer.ts` — day drawer + add/edit form ported from v2. Opens on
-   lens-day tap only; tapping a compressed week scrolls it into the lens
-   instead. Writes go through state.ts optimistic flow — the drawer never
-   calls gcal.ts directly.
+1. `src/drawer.ts` — day drawer + add/edit form ported from v2. Opens on a
+   day tap in the calendar view, via `scroll.onDayTap` (already wired to a
+   console log in `main.ts`). Writes go through state.ts optimistic flow —
+   the drawer never calls gcal.ts directly. *(Revised 2026-08-21: the lens
+   was removed in stage 03, so there are no compressed rows to tap.)*
 2. `src/sw.ts` — precache app shell, runtime cache-first for static assets.
    Never cache Calendar API responses in the SW.
 3. Offline behavior: app opens read-only from localStorage cache; writes fail
    with a visible message and roll back; reconnect triggers background refresh.
-4. Install path: viewport meta, safe-area insets, verify lens ratio holds on
-   a notched phone.
+4. Install path: viewport meta, safe-area insets, verify a full month still
+   fits on a notched phone.
 5. Dark mode pass per `prefers-color-scheme`, same restraint as light.
 
 ## Constraints
 - Drawer respects module boundaries: UI → state.ts → gcal.ts. No shortcuts.
+  This means stage 04 ADDS write orchestration (optimistic apply → API →
+  reconcile/rollback) to `state.ts`; the stage 03 ban on touching 02's
+  modules does not apply here, the contract requires it.
+- Transient UI must survive a background refresh. Stage 03 lost its hover
+  panel to exactly this: an arriving month repainted and tore it down. The
+  drawer is open for far longer — do not let a refresh close or reset it.
 - SW scope: static shell only. Data caching already lives in state.ts.
 
 ## Outputs

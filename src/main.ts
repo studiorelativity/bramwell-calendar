@@ -2,6 +2,7 @@
 
 import './style.css';
 import { isSignedIn, signIn } from './auth.ts';
+import { closeDrawer, isOpen as drawerOpen, openDay, refresh as refreshDrawer } from './drawer.ts';
 import { invalidateWeeks, mountedWeeks, setHeaderLabel } from './render.ts';
 import {
   initScroll,
@@ -21,6 +22,7 @@ import {
   dayAt,
   dayFromCivil,
   ensureMonthsFor,
+  markAllStale,
   onCacheChange,
   prefs,
   savePrefs,
@@ -117,6 +119,9 @@ function boot(): void {
   // the year view requests ~14 months, so filter to the ones that can change
   // what is on screen rather than rebuilding 392 cells per arrival.
   onCacheChange((months) => {
+    // No-op while the drawer's form is showing — a month arriving must never
+    // wipe what is being typed.
+    refreshDrawer();
     if (view !== 'year') {
       invalidateWeeks(mountedWeeks());
       return;
@@ -131,8 +136,7 @@ function boot(): void {
 
   onDockChange((week: WeekIndex) => savePrefs({ lastDockedDay: dayAt(week, 0) }));
 
-  // STAGE 04 wires this to the day drawer.
-  onDayTap((day) => console.log('day tapped', day));
+  onDayTap((day) => openDay(day));
 
   // 15/30/45 snap granularity, persisted.
   const stepButtons = [...document.querySelectorAll<HTMLButtonElement>('.step')];
@@ -147,6 +151,27 @@ function boot(): void {
     button.addEventListener('click', () => applyStep(Number(button.dataset.step) as SnapStep, true));
   }
   applyStep(prefs().snapStepDays ?? 30, false);
+
+  // --- offline -------------------------------------------------------------
+
+  const offlinePill = document.getElementById('offline-pill');
+  const paintOnline = (): void => {
+    if (offlinePill) offlinePill.hidden = navigator.onLine;
+  };
+  window.addEventListener('offline', paintOnline);
+  window.addEventListener('online', () => {
+    paintOnline();
+    // Everything resident is now suspect; refresh what is on screen and let
+    // the rest refresh as it is approached.
+    markAllStale();
+    ensureMonthsFor(renderWindow());
+  });
+  paintOnline();
+
+  // Escape closes the form first, then the drawer — ported from v2.
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && drawerOpen()) closeDrawer();
+  });
 
   const todayBtn = document.getElementById('today-btn');
   todayBtn?.addEventListener('click', () => scrollToWeek(0 as WeekIndex, true));
@@ -188,4 +213,12 @@ if (new URLSearchParams(location.search).has('selftest')) {
   boot();
 }
 
-// STAGE 04: register the service worker, wire onDayTap to the drawer.
+/**
+ * The service worker is registered in production only. In dev, Vite serves
+ * modules unbundled and a shell cache would serve stale code on every reload.
+ */
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    void navigator.serviceWorker.register('/sw.js');
+  });
+}

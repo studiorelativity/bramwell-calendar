@@ -10,6 +10,8 @@
       content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
     />
     <meta name="theme-color" content="#3056d3" />
+    <!-- Both: iOS still reads the Apple one, which is otherwise deprecated. -->
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <link rel="icon" type="image/png" href="/icon-192.png" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
@@ -88,6 +90,7 @@
           <button class="step" type="button" data-step="45" aria-pressed="false">45</button>
         </div>
         <button id="today-btn" class="hbtn" type="button">Today</button>
+        <span id="offline-pill" class="hbtn offline" hidden>Offline</span>
         <button id="signin-btn" class="hbtn" type="button" hidden>Sign in</button>
       </div>
       <div class="dow">
@@ -97,7 +100,7 @@
     </header>
     <main id="calendar"></main>
     <section id="year" hidden></section>
-    <aside id="drawer" hidden><!-- STAGE 04 --></aside>
+    <aside id="drawer" aria-label="Day details" hidden></aside>
     <!-- GIS loader. The script tag lives here so auth.ts stays DOM-free
          (stage 02 constraint); everything else about auth is in auth.ts. -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>

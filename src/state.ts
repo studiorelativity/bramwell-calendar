@@ -3,10 +3,17 @@
 // (conventions.md). Makes no network calls of its own and touches no DOM;
 // it asks gcal.ts for months it lacks.
 
-import { listMonth } from './gcal.ts';
+import {
+  createEvent as gcalCreate,
+  deleteEvent as gcalDelete,
+  listMonth,
+  updateEvent as gcalUpdate,
+} from './gcal.ts';
 import type {
   CalendarEvent,
   DayNumber,
+  EventDraft,
+  RecurrenceScope,
   DayOffset,
   EventCache,
   MonthCacheEntry,
@@ -246,6 +253,140 @@ export function applyOptimistic(event: CalendarEvent): () => void {
     persist();
     notify(keys);
   };
+}
+
+// ---------------------------------------------------------------------------
+// Writes — STAGE 04
+// ---------------------------------------------------------------------------
+// The drawer never calls gcal.ts. Every write lands locally as pending first,
+// then goes to the API, then reconciles from the server's answer — or rolls
+// back and rethrows so the UI can say what failed.
+
+let tempSeq = 0;
+
+export class OfflineError extends Error {
+  constructor() {
+    super('You are offline. This change was not saved.');
+    this.name = 'OfflineError';
+  }
+}
+
+/** Drop an event from the cache without keeping a rollback. */
+function removeLocal(event: CalendarEvent): void {
+  applyOptimistic({ ...event, pending: 'delete' });
+}
+
+/**
+ * Pull the authoritative version of the months a write touched. Recurring
+ * writes fan out unpredictably, so everything else resident is marked stale
+ * and refreshes as it is approached.
+ */
+function reconcile(months: readonly MonthKey[], series: boolean): void {
+  if (series) {
+    for (const entry of Object.values(cache.months)) entry.fetchedAt = 0;
+  }
+  for (const key of months) void fetchMonth(key);
+}
+
+function monthsOf(event: CalendarEvent): MonthKey[] {
+  return monthKeysBetween(event.span.start, event.span.end);
+}
+
+export function createEvent(draft: EventDraft): Promise<CalendarEvent> {
+  ensureAnchored();
+  tempSeq += 1;
+  const optimistic: CalendarEvent = {
+    id: `tmp_${tempSeq}`,
+    title: draft.title,
+    category: draft.category,
+    span: draft.span,
+    pending: 'create',
+  };
+  if (draft.notes) optimistic.notes = draft.notes;
+  if (draft.recurrence) optimistic.recurrence = draft.recurrence;
+
+  const rollback = applyOptimistic(optimistic);
+  return (async () => {
+    try {
+      if (!navigator.onLine) throw new OfflineError();
+      const saved = await gcalCreate(draft);
+      removeLocal(optimistic);
+      applyOptimistic(saved);
+      reconcile(monthsOf(saved), Boolean(draft.recurrence));
+      return saved;
+    } catch (err) {
+      rollback();
+      throw err;
+    }
+  })();
+}
+
+export function updateEvent(
+  event: CalendarEvent,
+  changes: Partial<EventDraft>,
+  scope: RecurrenceScope,
+): Promise<CalendarEvent> {
+  ensureAnchored();
+  const optimistic: CalendarEvent = {
+    ...event,
+    ...(changes.title !== undefined ? { title: changes.title } : {}),
+    ...(changes.notes !== undefined ? { notes: changes.notes } : {}),
+    ...(changes.category !== undefined ? { category: changes.category } : {}),
+    ...(changes.span !== undefined ? { span: changes.span } : {}),
+    pending: 'update',
+  };
+  // The span may have moved, so the old months need repainting too.
+  const touched = [...new Set([...monthsOf(event), ...monthsOf(optimistic)])];
+  const rollbackOld = applyOptimistic({ ...event, pending: 'delete' });
+  const rollbackNew = applyOptimistic(optimistic);
+
+  return (async () => {
+    try {
+      if (!navigator.onLine) throw new OfflineError();
+      const saved = await gcalUpdate(event, changes, scope);
+      removeLocal(optimistic);
+      applyOptimistic(saved);
+      reconcile(touched, scope === 'series');
+      return saved;
+    } catch (err) {
+      rollbackNew();
+      rollbackOld();
+      throw err;
+    }
+  })();
+}
+
+export function deleteEvent(event: CalendarEvent, scope: RecurrenceScope): Promise<void> {
+  ensureAnchored();
+  const touched = monthsOf(event);
+  const rollback = applyOptimistic({ ...event, pending: 'delete' });
+  return (async () => {
+    try {
+      if (!navigator.onLine) throw new OfflineError();
+      await gcalDelete(event, scope);
+      reconcile(touched, scope === 'series');
+    } catch (err) {
+      rollback();
+      throw err;
+    }
+  })();
+}
+
+/** Mark everything resident as stale, so it refreshes as it is approached. */
+export function markAllStale(): void {
+  for (const entry of Object.values(cache.months)) entry.fetchedAt = 0;
+}
+
+/** Events on a single day, cache-only — what the day drawer lists. */
+export function eventsOnDay(day: DayNumber): CalendarEvent[] {
+  return eventsForWeek(weekOf(day))
+    .filter((event) => event.span.start <= day && event.span.end >= day)
+    .sort((a, b) => {
+      const at = a.span.kind === 'timed' ? a.span.startMinute : -1;
+      const bt = b.span.kind === 'timed' ? b.span.startMinute : -1;
+      if (at !== bt) return at - bt;
+      return a.title < b.title ? -1 : 1;
+    });
 }
 
 // ---------------------------------------------------------------------------
