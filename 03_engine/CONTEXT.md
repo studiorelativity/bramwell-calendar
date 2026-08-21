@@ -20,10 +20,11 @@ The hard stage. Expect iteration; keep the human in the loop on motion feel.
    centre of the viewport; momentum settles softly, never hard-stops).
    Haptics off by default.
 2. `src/render.ts` — week rows (7 columns, weekend shade, alternating neutral
-   month band per day column), multi-week bars wrapping across rows with
-   longest-first lane packing, timed-event chips sorted by start time, inline
-   month boundary rules, sticky cross-fading header naming the month(s) in
-   view, today marker, Today button with animated return-and-snap.
+   month band per day column), day numbers top-RIGHT and the inline month
+   label top-LEFT so they cannot collide, multi-week bars wrapping across rows
+   with longest-first lane packing, timed-event chips sorted by start time,
+   inline month boundary rules, sticky cross-fading header naming the
+   month(s) in view, today marker, Today button, 15/30/45 snap selector.
 3. Wire into `main.ts`: first load rests on the boundary nearest today, today
    marked.
 
@@ -35,6 +36,8 @@ The hard stage. Expect iteration; keep the human in the loop on motion feel.
 - Nothing may overflow the row horizontally — no scaling of rows. Day numbers
   clipping at the left edge was a real defect the first time round.
 - The page must not double-tap-zoom on a phone; the scroller owns the gesture.
+  Note iOS Safari ignores `user-scalable=no` — `touch-action` plus explicit
+  gesture suppression is what actually works.
 - No audio work. Sound toggle is a pref stub only; motion is the priority.
 - Do not modify 02's modules. If their interface is insufficient, stop and
   flag it — that is an upstream fix, decided at the gate, not silently patched.

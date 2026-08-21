@@ -32,10 +32,13 @@ is legible all the time.
 - Week rows are uniform, sized so that roughly **six and a half weeks fill the
   viewport** — a full month plus its edges, visible at once, on a phone and a
   27" monitor alike. Proportional to viewport height, within sane bounds.
-- Scrolling **snaps by month**. Each detent advances or retreats one month
-  (~30 days, rolling), and comes to rest with the **month boundary at the
-  vertical centre of the viewport**: the end of one month above it, the
-  beginning of the next below.
+- Scrolling **snaps to half-month anchors** — the 1st and the 16th of each
+  month. A **15 / 30 / 45 selector in the header** sets how coarse the stops
+  are: every anchor (~15 days), every other one (~30 days, i.e. the 1st of
+  each month), or every third (~45 days). The anchor comes to rest at the
+  **vertical centre of the viewport**, so a 30-day stop straddles a month
+  boundary while a 15-day stop frames a whole month — which is the point of
+  offering the choice. The selection persists.
 - Momentum settles into the detent; it does not hard-stop. Landing should feel
   soft, not mechanical.
 - Months are distinguished by an **alternating neutral background band**,
@@ -62,6 +65,8 @@ On first load the view rests on the boundary nearest today, with today marked.
   a continuation carries none, so the title appears once per event.
 - Timed (non-all-day) events render as compact chips within their day cell,
   sorted by start time, with start time shown.
+- Day numbers sit in the **top-right** of each day cell; the inline month
+  label sits **top-left**, so the two never collide on the day a month starts.
 - Today: strong marker (filled day number), always findable via a "Today"
   button in the header that animates the scroll back and re-snaps.
 - Tap/click a day → day drawer (port from v2) with that day's events and the
@@ -105,7 +110,8 @@ honor `prefers-color-scheme` with the same restraint.
 
 - Vite + vanilla TypeScript. No framework. Hand-rolled DOM + transforms
   (the scroll interpolation is easier without a VDOM in the way).
-- localStorage for event cache + prefs (last docked position, sound toggle).
+- localStorage for event cache + prefs (last docked position, snap step,
+  sound toggle).
 
 ## File layout
 
@@ -170,7 +176,8 @@ calendar `primary`.
 - `npm run dev` → sign in → a full month is visible at once with today marked,
   the month(s) in view named in the header, alternating month bands legible
 - Flick-scroll three months ahead: smooth 60fps, momentum settles softly onto
-  a month boundary centred in the viewport, month header updates
+  a centred anchor at the selected 15/30/45 granularity, month header updates
+- On a phone, double-tapping a day never zooms the page
 - Scroll a year into the past: months load in as approached, no jank, no
   unbounded DOM growth
 - Create a 3-week all-day commitment → renders as a wrapping bar across three

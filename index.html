@@ -45,9 +45,9 @@
         :root {
           --surface: #0c0a09;
           --band-a: #0c0a09;
-          --band-b: #15120f;
-          --band-a-we: #1c1815;
-          --band-b-we: #24201b;
+          --band-b: #1b1714;
+          --band-a-we: #191512;
+          --band-b-we: #2a251f;
           --ink: #fafaf9;
           --ink-muted: #a8a29e;
           --rule: #292524;
@@ -74,6 +74,11 @@
     <header id="app-header">
       <div class="hrow">
         <div class="mlabel"></div>
+        <div class="steps" role="group" aria-label="Scroll step in days">
+          <button class="step" type="button" data-step="15" aria-pressed="false">15</button>
+          <button class="step" type="button" data-step="30" aria-pressed="true">30</button>
+          <button class="step" type="button" data-step="45" aria-pressed="false">45</button>
+        </div>
         <button id="today-btn" class="hbtn" type="button">Today</button>
         <button id="signin-btn" class="hbtn" type="button" hidden>Sign in</button>
       </div>

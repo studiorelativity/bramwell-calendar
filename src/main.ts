@@ -10,8 +10,18 @@ import {
   onWindowChange,
   renderWindow,
   scrollToWeek,
+  setSnapStep,
 } from './scroll.ts';
-import { anchorToToday, dayAt, ensureMonthsFor, onCacheChange, savePrefs, selfTest } from './state.ts';
+import type { SnapStep } from './scroll.ts';
+import {
+  anchorToToday,
+  dayAt,
+  ensureMonthsFor,
+  onCacheChange,
+  prefs,
+  savePrefs,
+  selfTest,
+} from './state.ts';
 import type { WeekIndex } from './types.ts';
 
 /** Dev-only: `?selftest` runs the week-index assertions and prints them. */
@@ -51,6 +61,20 @@ function boot(): void {
   // STAGE 04 wires this to the day drawer.
   onDayTap((day) => console.log('day tapped', day));
 
+  // 15/30/45 snap granularity, persisted.
+  const stepButtons = [...document.querySelectorAll<HTMLButtonElement>('.step')];
+  const applyStep = (days: SnapStep, persist: boolean): void => {
+    setSnapStep(days);
+    for (const button of stepButtons) {
+      button.setAttribute('aria-pressed', String(Number(button.dataset.step) === days));
+    }
+    if (persist) savePrefs({ snapStepDays: days });
+  };
+  for (const button of stepButtons) {
+    button.addEventListener('click', () => applyStep(Number(button.dataset.step) as SnapStep, true));
+  }
+  applyStep(prefs().snapStepDays ?? 30, false);
+
   const todayBtn = document.getElementById('today-btn');
   todayBtn?.addEventListener('click', () => scrollToWeek(0 as WeekIndex, true));
 
@@ -69,7 +93,21 @@ function boot(): void {
   if (signInBtn) signInBtn.hidden = wasSignedIn;
 }
 
+/**
+ * iOS Safari ignores `user-scalable=no` in the viewport meta, so the meta tag
+ * alone does not stop double-tap zoom. `touch-action` plus these handlers do.
+ * Without them a double-tap zooms in and the scroller swallows the gesture
+ * that would zoom back out, stranding the page.
+ */
+function suppressBrowserZoom(): void {
+  document.addEventListener('dblclick', (e) => e.preventDefault(), { passive: false });
+  for (const name of ['gesturestart', 'gesturechange', 'gestureend']) {
+    document.addEventListener(name, (e) => e.preventDefault(), { passive: false });
+  }
+}
+
 anchorToToday();
+suppressBrowserZoom();
 
 if (new URLSearchParams(location.search).has('selftest')) {
   runSelfTest();

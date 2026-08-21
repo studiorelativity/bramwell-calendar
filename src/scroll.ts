@@ -17,10 +17,16 @@ const VISIBLE_WEEKS = 6.5;
 const MIN_ROW_H = 74;
 const MAX_ROW_H = 190;
 /**
- * Where a snap puts the month boundary, as a fraction of the viewport.
- * 0.5 centres it: end of one month above, start of the next below.
+ * Where a snap puts the anchor, as a fraction of the viewport.
+ * 0.5 centres it: a 30-day anchor straddles a month boundary, a 15-day one
+ * frames a whole month.
  */
 const SNAP_ALIGN = 0.5;
+/** Snap granularity in days, as offered by the header selector. */
+export type SnapStep = 15 | 30 | 45;
+/** Half-month anchors to skip per detent: 15 -> every one, 30 -> every other. */
+const STEP_MODULUS: Record<SnapStep, number> = { 15: 1, 30: 2, 45: 3 };
+const DEFAULT_STEP: SnapStep = 30;
 /** How far momentum is projected before quantizing to a month. */
 const PROJECT_MS = 300;
 /** Settle duration = base + per-week, clamped. */
@@ -73,6 +79,7 @@ let settleMs = 0;
 let rafId = 0;
 let wheelTimer = 0;
 let lastLabelKey = '';
+let snapStepDays: SnapStep = DEFAULT_STEP;
 let lastWindowKey = '';
 
 const snapListeners: Array<(week: WeekIndex) => void> = [];
@@ -113,37 +120,33 @@ function slotFor(week: number): number {
   return ((week % n) + n) % n;
 }
 
-// -- month detents -----------------------------------------------------------
+// -- half-month detents -----------------------------------------------------
+// Anchors are the 1st and the 16th of each month, indexed consecutively. The
+// selected step skips every other or every third anchor, which keeps stops
+// pinned to real dates instead of drifting the way a rolling day count would.
 
-/** The fractional week position at which a given month begins. */
-function monthStartWeek(firstOfMonth: DayNumber): number {
-  const pos = positionOf(firstOfMonth);
+/** The fractional week position at which a given day begins. */
+function weekFloatOf(day: DayNumber): number {
+  const pos = positionOf(day);
   return pos.week + pos.day / 7;
 }
 
-function firstOfMonthContaining(day: DayNumber): DayNumber {
+/** Consecutive index over half-month anchors: ...(1st, 16th, 1st, 16th)... */
+function anchorIndexOf(day: DayNumber): number {
   const c = civilFromDay(day);
-  return dayFromCivil(c.year, c.month, 1);
+  return (c.year * 12 + (c.month - 1)) * 2 + (c.day >= 16 ? 1 : 0);
 }
 
-function shiftMonths(firstOfMonth: DayNumber, delta: number): DayNumber {
-  const c = civilFromDay(firstOfMonth);
-  let year = c.year;
-  let month = c.month + delta;
-  while (month > 12) {
-    month -= 12;
-    year += 1;
-  }
-  while (month < 1) {
-    month += 12;
-    year -= 1;
-  }
-  return dayFromCivil(year, month, 1);
+function anchorDay(index: number): DayNumber {
+  const monthIndex = Math.floor(index / 2);
+  const year = Math.floor(monthIndex / 12);
+  const month = (monthIndex % 12) + 1;
+  return dayFromCivil(year, month, index % 2 === 0 ? 1 : 16);
 }
 
-/** Scroll position that puts this month's boundary at SNAP_ALIGN. */
-function targetFor(firstOfMonth: DayNumber): number {
-  return monthStartWeek(firstOfMonth) - visibleWeeks * SNAP_ALIGN;
+/** Scroll position that puts this anchor at SNAP_ALIGN. */
+function targetFor(index: number): number {
+  return weekFloatOf(anchorDay(index)) - visibleWeeks * SNAP_ALIGN;
 }
 
 /** The day sitting at the alignment line for a given scroll position. */
@@ -154,16 +157,15 @@ function dayAtAlignment(position: number): DayNumber {
   return dayAt(week as WeekIndex, offset as DayOffset);
 }
 
-/**
- * Nearest month detent to a scroll position. Each detent is one month apart,
- * so a flick moves ~30 days rolling.
- */
+/** Nearest valid anchor to a scroll position, at the selected granularity. */
 function nearestDetent(position: number): number {
-  const base = firstOfMonthContaining(dayAtAlignment(position));
+  const modulus = STEP_MODULUS[snapStepDays];
+  const here = anchorIndexOf(dayAtAlignment(position));
+  const base = Math.floor(here / modulus) * modulus;
   let best = targetFor(base);
-  for (let delta = -2; delta <= 2; delta += 1) {
-    if (delta === 0) continue;
-    const candidate = targetFor(shiftMonths(base, delta));
+  for (let k = -2; k <= 2; k += 1) {
+    if (k === 0) continue;
+    const candidate = targetFor(base + k * modulus);
     if (Math.abs(candidate - position) < Math.abs(best - position)) best = candidate;
   }
   return best;
@@ -373,6 +375,17 @@ export function onDockChange(fn: (week: WeekIndex) => void): void {
 /** Fires when the realized week window shifts, so months can be prefetched. */
 export function onWindowChange(fn: (range: WeekRange) => void): void {
   windowListeners.push(fn);
+}
+
+/** Snap granularity in days. Re-snaps to the nearest anchor under the new step. */
+export function setSnapStep(days: SnapStep): void {
+  if (days === snapStepDays) return;
+  snapStepDays = days;
+  settleToward(nearestDetent(s));
+}
+
+export function snapStep(): SnapStep {
+  return snapStepDays;
 }
 
 /** A day tapped in the calendar. Stage 04 wires this to the drawer. */

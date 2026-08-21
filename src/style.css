@@ -4,6 +4,13 @@
 
 /* --- shell ---------------------------------------------------------------- */
 
+/* manipulation removes the browser's double-tap-to-zoom, which iOS Safari
+   keeps regardless of user-scalable=no in the viewport meta. */
+html,
+body {
+  touch-action: manipulation;
+}
+
 #calendar {
   position: fixed;
   inset: 0;
@@ -72,6 +79,33 @@
   display: none;
 }
 
+.steps {
+  display: flex;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.step {
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 11px;
+  padding: 4px 9px;
+  cursor: pointer;
+}
+
+.step + .step {
+  border-left: 1px solid var(--rule);
+}
+
+.step[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--surface);
+}
+
 .dow {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
@@ -82,8 +116,10 @@
   pointer-events: none;
 }
 
+/* Right-aligned to sit over the day numbers, which live in the top-right. */
 .dow span {
-  padding-left: 6px;
+  text-align: right;
+  padding-right: 6px;
 }
 
 /* --- week rows ------------------------------------------------------------ */
@@ -96,6 +132,7 @@
   overflow: hidden;
   contain: layout paint style;
   will-change: transform;
+  touch-action: none;
 
   --head-h: 19px;
   --lane-h: 16px;
@@ -131,10 +168,12 @@
   box-shadow: inset 1px 0 0 var(--rule);
 }
 
+/* Top-RIGHT. The inline month label owns the top-left, so on the 1st of a
+   month the two sit side by side instead of on top of each other. */
 .dnum {
   position: absolute;
   top: 2px;
-  left: 3px;
+  right: 3px;
   font-size: 11px;
   line-height: 16px;
   min-width: 16px;
@@ -151,7 +190,7 @@
 
 .more {
   position: absolute;
-  right: 4px;
+  left: 4px;
   bottom: 2px;
   font-size: 9px;
   color: var(--ink-muted);
@@ -170,12 +209,12 @@
 .mrule span {
   position: absolute;
   left: 5px;
-  top: 2px;
-  font-size: 9px;
-  letter-spacing: 0.07em;
+  top: 1px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--ink-muted);
-  font-weight: 600;
+  color: var(--ink);
+  font-weight: 700;
 }
 
 /* --- bars (all-day + multi-week, lane-packed) ----------------------------- */

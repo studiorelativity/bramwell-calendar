@@ -145,4 +145,10 @@ export interface Prefs {
    */
   lastDockedDay: DayNumber;
   soundEnabled: boolean;
+  /**
+   * Snap granularity in days: every half-month anchor (15), every other one
+   * (30 — the 1st of each month), or every third (45). Optional so that code
+   * written before the selector existed still type-checks.
+   */
+  snapStepDays?: 15 | 30 | 45;
 }

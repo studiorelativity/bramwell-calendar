@@ -130,14 +130,68 @@ finger travel, which uniform rows make honest.
 7. **`prefs.lastDockedDay` is still written but not read at launch** — first
    load rests on the boundary nearest today. Unchanged, still your call.
 
+## Second revision — 2026-08-20, after the first device test
+
+Three items from the device test.
+
+1. **Double-tap still zoomed the phone, and the fix I shipped was wrong.**
+   `user-scalable=no` in the viewport meta does not work: **iOS Safari has
+   deliberately ignored it since iOS 10** for accessibility reasons, so that
+   change never had any effect on the reported platform. What actually
+   suppresses it: `touch-action: manipulation` on `html, body`,
+   `touch-action: none` on the rows, and explicit `preventDefault` on
+   `dblclick` and on Safari's `gesturestart` / `gesturechange` / `gestureend`.
+   All four are now in place; the meta tag stays because it does work in
+   installed-PWA and Android contexts. **Still needs a real device to
+   confirm** — this is the second attempt at this bug.
+
+2. **Day number and month label overlapped.** Both were absolutely positioned
+   at the top-left of a day cell, so on the 1st of a month "1" and "OCT"
+   drew on top of each other — visible in the reported screenshot. Day
+   numbers moved to the **top-right**, the inline month label keeps the
+   **top-left**, and the overflow "+N" marker moved to the bottom-left. The
+   weekday initials in the header were right-aligned to match. The month
+   label was also darkened from `--ink-muted` to `--ink` and bolded, and the
+   dark-mode band tokens were lifted (`--band-b` #15120f -> #1b1714) because
+   the bands were too faint to read on a phone.
+
+3. **15 / 30 / 45 snap selector added to the header**, persisted in prefs.
+
+   Stops are **half-month anchors — the 1st and the 16th of each month** — and
+   the selector controls how many are skipped: 15 takes every anchor, 30
+   every other (so, the 1st of each month, the previous behaviour), 45 every
+   third. Anchoring to real dates rather than counting rolling days matters:
+   a pure day count drifts against the calendar (~5 days a year at 30), and
+   the stops would slowly stop lining up with month boundaries at all.
+
+   This is what fixes "you cannot see a complete month". At 30 the anchor is
+   a month boundary centred, so you always straddle. At 15 you also stop on
+   the 16th centred — and with ~6.5 weeks in view that frames a whole month.
+
+   Verified at 1440x900, restoring each setting from prefs:
+
+   | Step | Modulus | Day landing at centre | Valid anchor |
+   |---|---|---|---|
+   | 15 | 1 | 2026-09-01 | yes (a 1st) |
+   | 30 | 2 | 2026-09-01 | yes (a 1st) |
+   | 45 | 3 | 2026-08-16 | yes (a 16th, index ≡ 0 mod 3) |
+
+`Prefs.snapStepDays` was added to `types.ts` as an **optional** field, so
+`state.ts` needed no change — stage 03 must not modify 02's modules, and an
+optional field keeps its `prefs()` fallback compiling untouched.
+
 ## Human gate checklist
 
 1. Phone. Flick three months. It should move ~30 days per flick and settle
    softly with the boundary mid-screen.
-2. **Double-tap a day.** The page must not zoom. This is the fix for the bug
-   you hit; it needs a real touch device to confirm.
-3. Desktop, several window widths including narrow. No day number may be cut
-   off at the left edge.
+2. **Double-tap a day.** The page must not zoom. **Second attempt at this
+   bug** — the first fix relied on `user-scalable=no`, which iOS ignores.
+   If it still zooms, say so and I will move to swallowing the second tap in
+   the pointer handler, which is the last resort that always works.
+3. **Try all three of 15 / 30 / 45.** At 15, stopping on the 16th should
+   frame a whole month. Tell me which you want as the default (currently 30).
+4. Desktop, several window widths including narrow. No day number may be cut
+   off at either edge, and no month label may collide with a day number.
 4. Is 6.5 weeks the right amount to see at once? `VISIBLE_WEEKS` is one number.
 5. Are the month bands strong enough to read the boundary without the label —
    and not so strong they compete with the event colours? Tokens are
