@@ -1,0 +1,17 @@
+# Cloudflare Pages header rules. Copied verbatim from public/ to the build
+# output root, which is where Pages looks for this file.
+
+# The worker must revalidate on every load. If an edge or browser cache pins
+# it, a new CACHE name in sw.ts can never take effect and installed clients
+# are stranded on the old shell forever.
+/sw.js
+  Cache-Control: no-cache
+
+# Entry point references content-hashed assets, so it must never be stale.
+/index.html
+  Cache-Control: no-cache
+
+# Hashed filenames — a changed byte means a changed URL, so these are safe to
+# pin. The webmanifest is hashed into here too.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

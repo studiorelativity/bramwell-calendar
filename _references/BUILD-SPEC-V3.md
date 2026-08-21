@@ -238,8 +238,71 @@ deployed origin when you deploy.
 3. OAuth consent screen → External → add scope `.../auth/calendar.events`,
    add yourself as test user, leave in **Testing**
 4. Credentials → OAuth client ID → Web application → authorized JavaScript
-   origins: `http://localhost:5173` (+ deploy origin later). No redirect URIs.
+   origins: `http://localhost:5173` and `https://cal.no.fail` (see DEPLOY).
+   No redirect URIs.
 5. Client ID → `.env.local` as `VITE_GOOGLE_CLIENT_ID=`
 
 Testing-status consent expires periodically; re-clicking sign-in fixes it.
 Not a bug.
+
+---
+
+## DEPLOY (Cloudflare Pages → https://cal.no.fail)
+
+### The origin must be a domain root
+
+Not a subpath. Three things depend on it and break together otherwise:
+`sw.ts` registers `/sw.js` and precaches `/`, `/index.html`, `/icon-*.png`;
+the webmanifest declares `"start_url": "/"` and `"scope": "/"`; `index.html`
+links its icons at `/`. HTTPS is required twice over — Google Identity
+Services refuses insecure origins, and service workers do not register on
+them.
+
+`cal.no.fail` is a dedicated subdomain in the existing `no.fail` Cloudflare
+zone, chosen for exactly this reason. The apex serves an unrelated Carrd site
+and `www` 301s to the apex; neither is disturbed. Serving this app from
+`no.fail/calendar/` is not an option — that is the subpath case above.
+
+### Pages project settings
+
+| Setting | Value |
+|---|---|
+| Build command | `npm run build` |
+| Output directory | `dist` |
+| Node version | pinned by `.node-version` |
+| Environment variable | `VITE_GOOGLE_CLIENT_ID` |
+| Custom domain | `cal.no.fail` |
+
+`VITE_GOOGLE_CLIENT_ID` must be set in the Pages dashboard, not just
+`.env.local` — Vite inlines it at build time and `.env.local` is gitignored,
+so the build host has no other source for it. A web OAuth client ID is public
+by design; the origin allowlist below is the security boundary, not secrecy.
+
+Adding `cal.no.fail` as a Pages custom domain creates the proxied CNAME in the
+zone automatically. Cloudflare issues the certificate; wait for it to go
+active before testing sign-in.
+
+`public/_headers` is copied to the output root and holds the cache rules. The
+`/sw.js` rule is load-bearing: if the worker gets pinned by a cache, bumping
+`CACHE` in `sw.ts` can never take effect and installed clients stay on the old
+shell permanently.
+
+### Then, in Google Cloud Console
+
+Add `https://cal.no.fail` to the OAuth client's authorized JavaScript origins,
+alongside `http://localhost:5173`. Exact-match, so the scheme and the full
+hostname both matter — `no.fail` and `www.no.fail` are different origins to
+Google and neither one covers `cal.no.fail`. Until this is done, sign-in fails
+with `origin_mismatch` — that is the expected failure, not a bug in the app.
+
+**Preview deployments cannot sign in.** Each Pages preview gets its own
+`<hash>.<project>.pages.dev` origin, Google does not accept wildcard origins,
+and adding them one by one is not practical. Previews are for layout only.
+Anything touching auth or the Calendar API must be tested on `cal.no.fail`.
+
+### Deploying is a prerequisite for the stage 04 gate, not a step after it
+
+`npm run preview` on localhost is a secure context, but a phone reaching
+`http://<lan-ip>:4173` is not: the service worker will not register and no
+install prompt appears. The Definition-of-done items covering PWA install and
+offline open are therefore only testable against `https://cal.no.fail`.
