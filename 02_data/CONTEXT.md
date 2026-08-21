@@ -5,9 +5,16 @@
   **"Calendar API (src/gcal.ts)"**, **"Categories (src/categories.ts)"**,
   and the localStorage-cache portion of **"Perpetual scroll mechanics"**
   (lazy month loading, cache-then-refresh)
-- L3: `../_references/year-planner-v2.html` — the API-call logic, optimistic
-  write/rollback pattern, and category mapping only. Ignore all layout and
-  DOM code.
+- L3: `../_references/year-planner-v2.html` — the **category mapping**
+  (lines 257-262) and the `'YYYY-MM' -> events` / `loaded` month-cache shape
+  ONLY. Ignore all layout and DOM code, and ignore its API layer entirely:
+  v2 drives the calendar through the Anthropic Messages API plus a Calendar
+  MCP server (line 283), so it has no GIS auth, no Calendar v3 REST, and no
+  working optimistic write/rollback — `.bar.pending` and `ev.pending` are
+  vestigial, nothing sets them. `auth.ts`, `gcal.ts` and the optimistic
+  pattern are written from the spec, from scratch. (Corrected after stage
+  01; the spec's "unchanged from v2 spec" means the v2 spec document, not
+  this file.)
 - L4: `src/types.ts` (from 01)
 
 ## Process
