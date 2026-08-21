@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- viewport-fit=cover + safe-area insets: the lens ratio must hold on notched phones. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#3056d3" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <link rel="icon" type="image/png" href="/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <title>Bramwell Calendar</title>
+    <style>
+      /* The four category colors, defined once (conventions.md). */
+      :root {
+        --cat-work: #3056d3;
+        --cat-personal: #17925a;
+        --cat-financial: #d97706;
+        --cat-other: #64748b;
+
+        --surface: #ffffff;
+        --surface-weekend: #f6f6f5;
+        --ink: #1c1917;
+        --ink-muted: #78716c;
+        --rule: #e7e5e4;
+
+        --safe-top: env(safe-area-inset-top, 0px);
+        --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+        color-scheme: light dark;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --surface: #0c0a09;
+          --surface-weekend: #16130f;
+          --ink: #fafaf9;
+          --ink-muted: #a8a29e;
+          --rule: #292524;
+        }
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        overscroll-behavior: none;
+      }
+
+      body {
+        background: var(--surface);
+        color: var(--ink);
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      }
+
+      /* STAGE 03 owns everything inside #calendar. */
+      #calendar {
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <header id="app-header"><!-- STAGE 03: month strip, Today, sign-in --></header>
+    <main id="calendar"></main>
+    <aside id="drawer" hidden><!-- STAGE 04 --></aside>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
