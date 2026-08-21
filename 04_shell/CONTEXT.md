@@ -30,6 +30,26 @@
 - `output/verification.md` — the spec's full Definition of Done, item by
   item, each checked with result
 
+## Inherited from the stage 02 gate (2026-08-20)
+Recorded here because stages read only their own CONTEXT.md — these would
+otherwise be invisible. Detail in `../02_data/output/verification.md`.
+
+1. **Category colors on the real wire.** Deferred from 02: create one event
+   per category through the drawer and confirm all four colors in the Google
+   Calendar app. Stub-proven only so far.
+2. **All-day exclusive-end conversion on the real wire.** Deferred from 02:
+   create a 3-week all-day commitment through the drawer and confirm in the
+   Google Calendar app that it ends on the chosen day and NOT a day later.
+3. **Edit one occurrence, delete the series** with confirmation, through the
+   drawer. Deferred from 02.
+4. **`apple-mobile-web-app-capable` is deprecated** — `index.html` warns.
+   Add the standard `mobile-web-app-capable` alongside it (keep both; iOS
+   still reads the Apple one).
+
+Items 1-3 are also Definition-of-done items, so the gate below covers them —
+but they are now the ONLY confirmation that stage 02's write path works
+against the real API. Do not sign them off from the stub evidence.
+
 ## Gate
 The spec's **Definition of done** section, verbatim, executed by the human
 on a real phone: every item passes, including kill-the-network read-only

@@ -2,17 +2,17 @@
 
 Date: 2026-08-20 · Implements `auth.ts`, `gcal.ts`, `categories.ts`, `state.ts`
 
-## Gate (human, in browser, real account) — NOT YET RUN
+## Gate (human, in browser, real account) — CLOSED 2026-08-20
 
-The gate is entirely human-in-browser against a real Google account. Nothing
-below can be self-certified; the checklist is at the end of this file.
+Run by the human against a real Google account. Results per criterion below;
+the executed checklist with detail is at the end of this file.
 
 | Gate criterion | Status |
 |---|---|
-| Sign in works; token renews quietly on reload | **Awaiting human** |
-| A month fetch logs real events, including a paginated month | **Awaiting human** (pagination logic proven against a stub — see below) |
-| Category mapping round-trips; colors correct in the Google Calendar app | **Awaiting human** (mapping + colorId payload proven against a stub) |
-| Week-index selftest passes across a year and a DST boundary | **Pass — 9/9**, run against the real module |
+| Sign in works; token renews quietly on reload | **Pass 2026-08-20.** Quiet renewal fired on first `getToken()` after reload — no popup, no second consent. `isSignedIn()` reads false until that first call, which is decision 2 working as designed (the token is in-memory only). |
+| A month fetch logs real events, including a paginated month | **Pass 2026-08-20.** 3 real events for week 0; `MAX_RESULTS` lowered to 5 to force pagination, all events returned, constant restored to 250 and re-verified. |
+| Category mapping round-trips; colors correct in the Google Calendar app | **Deferred to the stage 04 gate** — needs the drawer UI. Mapping and colorId payload are stub-proven (12/12 below); real-wire confirmation is inherited by stage 04. |
+| Week-index selftest passes across a year and a DST boundary | **Pass — 9/9**, in the browser and against the real module. |
 
 ## Automated evidence
 
@@ -121,21 +121,24 @@ No runtime override was added; the spec says "no caps" in production.
 
 Requires `npm run dev` and a real Google account.
 
-1. `/?selftest` → expect 9/9 PASS. **Do this first**; everything downstream
-   depends on the week math.
-2. `/` → click sign in → consent → `isSignedIn()` true. Reload → token renews
-   quietly, no second consent prompt.
-3. In the console: `(await import('/src/state.ts')).ensureMonthsFor({first:0,last:0})`,
-   then `monthState('2026-08')` → `'ready'`, and `eventsForWeek(0)` → your real
-   events for this week.
-4. Pagination: lower `MAX_RESULTS` to 5 in `gcal.ts`, re-run the fetch on a
-   month with more than 5 events, confirm all of them come back. Restore it.
-5. Create one event per category; confirm all four colors in the Google
-   Calendar app.
-6. Create a 3-week all-day commitment; confirm in Google Calendar that it ends
-   on the day you chose and **not** a day later — the exclusive-end conversion.
-7. Edit one occurrence of a weekly event; delete the series with confirmation.
+1. `/?selftest` → **PASS 2026-08-20** — 9/9, run in browser console.
+2. Sign in → consent → `isSignedIn()` true → **PASS 2026-08-20**. Reload:
+   `isSignedIn()` false until first `getToken()` call (in-memory token,
+   expected per decision 2); `ensureMonthsFor` triggered quiet renewal,
+   flipped to true, no popup, no consent prompt. **PASS.**
+3. `ensureMonthsFor({first:0,last:0})` → `monthState('2026-08')` = `'ready'`,
+   `eventsForWeek(0)` = 3 real events. **PASS 2026-08-20.**
+4. `MAX_RESULTS` lowered to 5, month with >5 events fetched, all returned —
+   pagination follows `nextPageToken`. **Restored to 250 and verified.**
+   **PASS 2026-08-20.**
+5. **DEFERRED to stage 04 gate** — no UI until the drawer exists; request
+   logic already proven against the fetch stub (12/12 above). The 04 gate
+   inherits this item.
+6. **DEFERRED to stage 04 gate** — same basis; the exclusive-end conversion
+   is stub-proven, real-wire confirmation happens through the drawer.
+7. **DEFERRED to stage 04 gate** — same basis.
 
-Steps 5-7 have no UI until stage 04; drive them from the console against
-`gcal.ts` directly, or defer them to the stage 04 gate. Flag which you chose
-in this file before starting stage 03.
+Gate closed 2026-08-20. Stage 03 unblocked.
+Carry-forward for stage 04: items 5–7 above, plus the deprecated
+`apple-mobile-web-app-capable` meta warning (add the standard
+`mobile-web-app-capable` tag alongside it).
