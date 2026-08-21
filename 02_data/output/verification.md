@@ -138,7 +138,14 @@ Requires `npm run dev` and a real Google account.
    is stub-proven, real-wire confirmation happens through the drawer.
 7. **DEFERRED to stage 04 gate** — same basis.
 
+**Real-API `createEvent` succeeded 2026-08-20** — the write path reaches
+Google, not just the fetch stub. Items 5-7 remain deferred for the
+category-colour and exclusive-end confirmations, but "no write has ever
+reached the API" is no longer an open risk.
+
 Gate closed 2026-08-20. Stage 03 unblocked.
 Carry-forward for stage 04: items 5–7 above, plus the deprecated
 `apple-mobile-web-app-capable` meta warning (add the standard
 `mobile-web-app-capable` tag alongside it).
+
+2026-08-20: console createEvent against the real API succeeded (all-day, work/blue, round-trip end-date conversion confirmed in the response). Write-path risk note answered; 5–7 remain deferred for per-category colors and series semantics.

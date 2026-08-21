@@ -121,6 +121,7 @@ communicated by the lens: docked weeks get a barely-there elevation
 /src/categories.ts  — category <-> colorId mapping
 /src/sw.ts          — service worker
 /src/types.ts
+/src/style.css     — app stylesheet (added at stage 03; the lens needs it)
 /.env.local         — VITE_GOOGLE_CLIENT_ID=... (gitignored)
 ```
 

@@ -46,9 +46,11 @@ otherwise be invisible. Detail in `../02_data/output/verification.md`.
    Add the standard `mobile-web-app-capable` alongside it (keep both; iOS
    still reads the Apple one).
 
-Items 1-3 are also Definition-of-done items, so the gate below covers them —
-but they are now the ONLY confirmation that stage 02's write path works
-against the real API. Do not sign them off from the stub evidence.
+Items 1-3 are also Definition-of-done items, so the gate below covers them.
+A real-API `createEvent` succeeded 2026-08-20, so the write path is known to
+reach Google; what is still unconfirmed on the real wire is the category
+colour mapping and the all-day exclusive-end conversion. Do not sign those
+off from the stub evidence.
 
 ## Gate
 The spec's **Definition of done** section, verbatim, executed by the human

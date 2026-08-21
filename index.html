@@ -54,14 +54,20 @@
           -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       }
 
-      /* STAGE 03 owns everything inside #calendar. */
-      #calendar {
-        height: 100%;
-      }
     </style>
   </head>
   <body>
-    <header id="app-header"><!-- STAGE 03: month strip, Today, sign-in --></header>
+    <header id="app-header">
+      <div class="hrow">
+        <div class="mlabel"></div>
+        <button id="today-btn" class="hbtn" type="button">Today</button>
+        <button id="signin-btn" class="hbtn" type="button" hidden>Sign in</button>
+      </div>
+      <div class="dow">
+        <span>M</span><span>T</span><span>W</span><span>T</span>
+        <span>F</span><span>S</span><span>S</span>
+      </div>
+    </header>
     <main id="calendar"></main>
     <aside id="drawer" hidden><!-- STAGE 04 --></aside>
     <!-- GIS loader. The script tag lives here so auth.ts stays DOM-free
