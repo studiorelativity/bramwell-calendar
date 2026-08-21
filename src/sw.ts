@@ -26,8 +26,14 @@ interface WorkerScope {
 
 declare const self: WorkerScope;
 
-const CACHE = 'bramwell-shell-v1';
-const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
+const CACHE = 'bramwell-shell-v2';
+/**
+ * Only paths the build actually emits at these URLs. The manifest, JS and CSS
+ * are content-hashed into /assets/ and cannot be named here; they are picked
+ * up by the runtime cache below on the first online load, which always happens
+ * before the app is useful anyway — signing in requires the network.
+ */
+const SHELL = ['/', '/index.html', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

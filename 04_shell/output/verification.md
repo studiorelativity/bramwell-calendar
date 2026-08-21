@@ -3,6 +3,37 @@
 Date: 2026-08-21 · Implements `drawer.ts`, `sw.ts`, write orchestration in
 `state.ts`, offline handling, install polish
 
+## Gate — CLOSED 2026-08-21
+
+Closed on the human's sign-off. **Read the two caveats below before treating
+this build as fully verified** — they are the only Definition-of-done items
+that have never been checked against the real Google Calendar API, and they
+have been deferred since the stage 02 gate.
+
+### Not confirmed on the real wire
+
+1. **Category colours.** `colorId` mapping is proven against a stubbed
+   `fetch` (12/12 in stage 02) and the four ids come straight from v2, which
+   used them in production — but no event created by this build has been
+   opened in the Google Calendar app to confirm its colour.
+2. **All-day exclusive-end conversion.** Proven against the stub: a 3-day
+   event goes out as `2026-08-20 → 2026-08-23`, and a naive port would send
+   the 22nd. Never confirmed against the live API. If it were wrong, every
+   multi-day event would be created one day short or long. Risk is low — the
+   logic is directly tested — but it is untested end to end.
+
+A real-API `createEvent` did succeed on 2026-08-20, so the write path reaches
+Google. It is specifically these two conversions that remain unconfirmed.
+
+### Could not be verified in this environment
+
+**Service worker registration.** Headless Chrome hangs when a page registers a
+service worker under a virtual-time budget, so registration, scope and cache
+population could not be exercised here. What *was* verified statically:
+`sw.js` is emitted at the site root (so its scope is `/`), contains no ESM
+syntax (so it registers as a classic worker anywhere), and its precache list
+matches paths the build actually emits. **First real install is the test.**
+
 ## Definition of done — item by item
 
 The gate is the spec's Definition of done executed by the human on a real
@@ -50,6 +81,22 @@ shows the original title, not "Renamed".
 Also verified: `dist/sw.js` is emitted **at the site root**, not under
 `/assets/`, so its scope covers the whole app; and it contains no ESM syntax,
 so it registers as a classic worker on every browser.
+
+### A bug found while closing the gate
+
+The service worker precached `/manifest.webmanifest`, **which the build does
+not emit** — Vite content-hashes it to `/assets/manifest-<hash>.webmanifest`.
+The precache silently 404'd (it uses `allSettled`, so install still
+succeeded). It went unnoticed because `curl /manifest.webmanifest` against
+`vite preview` returns **200**: the preview server falls back to `index.html`
+for unknown paths, so the check that was supposed to prove the file existed
+proved nothing. Corrected to precache only paths the build really emits, and
+the cache name bumped to `bramwell-shell-v2` so existing installs re-prime.
+
+Consequence worth knowing: the hashed JS, CSS and manifest are **not**
+precached at install. They are runtime-cached on the first online load, which
+always precedes useful work because signing in needs the network. Offline
+open therefore works from the second launch onward, not the first.
 
 ## Decisions the spec left open
 
