@@ -259,9 +259,11 @@ Services refuses insecure origins, and service workers do not register on
 them.
 
 `cal.no.fail` is a dedicated subdomain in the existing `no.fail` Cloudflare
-zone, chosen for exactly this reason. The apex serves an unrelated Carrd site
-and `www` 301s to the apex; neither is disturbed. Serving this app from
-`no.fail/calendar/` is not an option — that is the subpath case above.
+zone, chosen for exactly this reason. The apex serves an unrelated Astro site
+with its own routes (`/about/`, `/work/`, `/writing/`, ...) and `www` 301s to
+the apex; neither is disturbed. Serving this app from `no.fail/calendar/` is
+not an option — that is the subpath case above, and it would collide with the
+apex site's routing besides.
 
 ### Pages project settings
 
