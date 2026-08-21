@@ -2,154 +2,145 @@
 
 Date: 2026-08-20 · Implements `scroll.ts`, `render.ts`, `style.css`, wires `main.ts`
 
-## Gate (human, on a real phone + desktop) — NOT YET RUN
+## Revision — the lens was built, tried, and rejected
 
-All four criteria are motion-and-feel judgements on real hardware. What could
-be verified headlessly is below; none of it substitutes for the gate.
+The first stage 03 build implemented the spec's lens: scroll-linked zoom, two
+week rows at full detail, everything else compressed to 20px, two-week
+detents. It worked and it snapped softly, but on the device the compressed
+rows made the shape of a month **harder** to read, which was the entire
+justification for compressing them. Human call, 2026-08-20: drop the lens.
+
+Fixed upstream first, per the rules: the spec's "The core interaction"
+section, Layout details, Perpetual scroll mechanics, Visual direction, and
+Definition of done were rewritten, along with this stage's contract, before
+any code changed. The spec now describes a **rolling month**: uniform rows,
+month detents, alternating month bands.
+
+## Two defects from the first build, both fixed at the root
+
+1. **Day numbers clipped at the left edge on desktop.** Docked rows carried
+   `transform: scale(1.01)` for the spec's "barely-there elevation". Scaling a
+   full-width row from its centre pushes it ~0.5% past each edge — about 7px
+   at 1440px wide — and `#calendar { overflow: hidden }` cut off the Monday
+   column's day number. Row scaling is gone entirely (the revised Visual
+   direction forbids it), and the contract now carries "nothing may overflow
+   the row horizontally" as a constraint.
+
+2. **Double-tap zoomed the phone and stranded it there.** The viewport meta
+   allowed user scaling, so a double-tap triggered the browser's zoom — but
+   `#calendar { touch-action: none }` swallows the gesture that would zoom
+   back out, leaving no way to recover without a reload. The viewport meta is
+   now `maximum-scale=1, user-scalable=no`: the scroller owns the gesture, so
+   the browser must not also claim it.
+
+## Gate (human, on a real phone + desktop) — NOT YET RUN
 
 | Gate criterion | Status |
 |---|---|
-| Flick three months: 60fps, lift/settle, momentum ends docked, header updates, haptic tick | **Awaiting human.** Physics implemented; feel is untested. |
-| Scroll a year into the past: months load as approached, no jank, DOM bounded | **Partly pre-verified.** DOM is bounded by construction (fixed pool, modulo recycling) and measured at three viewports. Jank and lazy-load timing need the device. |
-| A 3-week all-day event wraps as a bar across three week rows | **Pre-verified in headless Chrome** — see below. Confirm visually. |
-| Today button returns and docks from anywhere | **Awaiting human.** |
+| Flick three months: 60fps, settles softly onto a centred month boundary, header updates | **Awaiting human.** Snap geometry verified; feel is untested. |
+| A full month readable at a glance; bands make the boundary obvious | **Partly pre-verified** — bands render and split mid-row correctly. Legibility is a judgement. |
+| Scroll a year into the past: months load as approached, no jank, DOM bounded | **Partly pre-verified.** 14 rows realized at every viewport, fixed by construction. |
+| A 3-week all-day event wraps across three week rows | **Pre-verified in headless Chrome.** |
+| Today button returns and snaps from anywhere | **Awaiting human.** |
+| Desktop: no day number clipped at any window width | **Pre-verified** — no scaling remains; verify by eye. |
+| Phone: double-tapping a day does not zoom | **Awaiting human** — needs a real touch device. |
 
 ## Automated evidence
 
 Headless Chrome against the dev server, cache seeded through localStorage.
 
-**Wrapping bar, lane packing, chips** — a 3-week all-day event, a 2-day
-event, and a timed event, seeded into week 0:
+**Uniform rows, and the boundary lands exactly centred:**
+
+| Window | innerHeight | Row height | Rows realized | Boundary y | Content centre |
+|---|---|---|---|---|---|
+| 390 x 844 | 757 | 106.31px | 14 | 411.5 | **411.5** |
+| 1440 x 900 | 813 | 114.92px | 14 | 439.5 | **439.5** |
+| 1920 x 1200 | 1113 | 161.08px | 14 | 589.5 | **589.5** |
+
+Row spacing equals row height exactly at every viewport — no gaps, no
+overlaps, one height per viewport. Consecutive month boundaries sit ~4.3 rows
+apart, so one detent moves ~30 days. `scale(` appears nowhere in the output.
+
+**Bands, bars and chips** — August is band 1, September band 0:
 
 ```
-week 0:  bar   work       col=0 span=7 lane=0  "Sabbatical"   cont-right
-         bar   financial  col=2 span=2 lane=1  "Tax filing"
-         bar   personal   col=3 span=1 lane=2  (timed, no title)
-         chip  col=3  9:30  "Standup"
-week 1:  bar   work       col=0 span=7 lane=0  ""             cont-left cont-right
-week 2:  bar   work       col=0 span=7 lane=0  ""             cont-left
+week 0: bands=1111111  today=1
+   bar  work       col=0 span=7 lane=0  "Sabbatical"      cont-right
+   bar  financial  col=2 span=2 lane=1  "Tax filing"
+   chip col=3  9:30  "Standup"
+week 1: bands=1111111
+   bar  work       col=0 span=7 lane=0  ""   cont-left cont-right
+week 2: bands=1000000            <- Mon 31 Aug, then Sep from Tuesday on
+   bar  work       col=0 span=7 lane=0  ""   cont-left
 ```
 
-Wraps across exactly three rows; continuation flags square the joined ends;
-the title appears only on the true start; longest-first put the 3-week bar in
-lane 0. The timed event is simultaneously a thin bar (compressed) and a chip
-(lens) — see decision 4.
+The band splits mid-row precisely at Sep 1, which is the point of applying it
+per column rather than per row. The 3-week bar still wraps across exactly
+three rows with the title on the true start only. Week-index selftest still
+passes: **9/9**. No page errors.
 
-**Lens ratio and pool size**, three viewports:
+**DOM is much smaller than the lens build**: 14 rows at every viewport, versus
+50–68 before, because uniform rows only need to cover the viewport once.
 
-| Window | innerHeight | Lens rows | Lens / viewport | Rows realized |
-|---|---|---|---|---|
-| 390 x 844 | 757 | 132.47px | **0.350** | 50 |
-| 1440 x 900 | 813 | 142.27px | **0.350** | 53 |
-| 1920 x 1200 | 1113 | 194.77px | **0.350** | 68 |
-
-Rows are exactly contiguous (week 0 at y=246.03 h=132.47 → week 1 at
-y=378.50), and the two docked rows fill the lens band exactly. Week-index
-selftest still passes in real Chrome: **9/9**. No page errors on load.
-
-## The one that needs a decision at the gate
-
-**Two-week detents are anchored to week 0, so only even pairs dock** —
-weeks 0+1, 2+3, 4+5. You cannot dock weeks 1+2. That follows the spec's
-"snaps in two-week detents … the nearest week *pair* docks", read as a fixed
-partition rather than a one-week snap, and it makes first load (this week +
-next) fall out for free. But it does mean a specific fortnight you want to
-compare may be split across two detents.
-
-If it feels wrong, `DETENT_WEEKS = 1` in `scroll.ts` is the whole change —
-every week then becomes dockable and the lens still shows two rows. **Try
-both during the gate before deciding.**
-
-## Tuned by feel — all constants live at the top of `scroll.ts`
+## Tuned by feel — all constants at the top of `scroll.ts`
 
 | Constant | Value | Why |
 |---|---|---|
-| `LENS_FRACTION` | 0.35 | Spec. Proportional; verified 0.350 at three viewports. |
-| `COMPRESSED_H` | 20px | Middle of the spec's 16-24px. Lower shows more months but crushes bars. |
-| `DETENT_WEEKS` | 2 | See above. |
-| `PROJECT_MS` | 260 | How far momentum is projected before quantizing. Higher = flicks travel further. |
-| `SETTLE_BASE_MS` / `SETTLE_PER_WEEK_MS` / `SETTLE_MAX_MS` | 270 / 85 / 720 | Settle duration scales with distance, capped so long jumps stay responsive. |
-| `WHEEL_GAIN` | 0.55 | Trackpads over-deliver; unscaled wheel travel felt twitchy. |
-| `WHEEL_IDLE_MS` | 130 | Quiet period before a wheel gesture settles to a detent. |
-| `BUFFER_ROWS` | 3 | Rows rendered past each viewport edge. |
-| `TAP_SLOP_PX` | 6 | Under this on release is a tap, not a drag. |
+| `VISIBLE_WEEKS` | 6.5 | A month plus its edges. Raise to see more at once and shrink the rows. |
+| `MIN_ROW_H` / `MAX_ROW_H` | 74 / 190 | Keeps the proportional height sane on extreme viewports. |
+| `SNAP_ALIGN` | 0.5 | Where the boundary rests, as a fraction of the content area. 0.5 centres it; lower it to sit the boundary higher and show more of the incoming month. |
+| `PROJECT_MS` | 300 | How far momentum is projected before quantizing to a month. |
+| `SETTLE_BASE_MS` / `SETTLE_PER_WEEK_MS` / `SETTLE_MAX_MS` | 280 / 42 / 760 | Soft landing, scaled by distance. The previous build's settle was kept — you said it lands softly. |
+| `WHEEL_GAIN` | 0.6 | Trackpads over-deliver. |
+| `WHEEL_IDLE_MS` | 140 | Quiet period before a wheel gesture settles. |
+| `HAPTIC_ON_SNAP` | **false** | You asked to move away from the haptic feel. One flag to restore it. |
 
-Easing: `easeOutCubic` for the settle — decelerates to zero, so momentum
-never hard-stops. The lift curve is `smoothstep`, flat at 1 across the two
-docked rows and easing to 0 exactly one week beyond either lens edge, so
-lift/height/opacity are all continuous functions of scroll position.
-Velocity is smoothed 0.7/0.3 so one jittery pointer sample cannot dominate a
-fling. Drag conversion is one week per lens-row height — the user is
-manipulating what is in the lens, not the compressed field.
+Easing is `easeOutCubic`, unchanged from the build you tried. Velocity is
+smoothed 0.7/0.3. Drag is 1:1 with row height — one row per row-height of
+finger travel, which uniform rows make honest.
 
 ## Decisions the spec left open
 
-1. **Pool size follows the viewport; the spec's flat "~40 rows" does not
-   work.** At 20px compressed rows a 1200px-tall window needs ~66 rows just
-   to fill, so 40 would leave a desktop screen visibly empty — and the
-   spec's own Definition of done names a 27" monitor. The count is derived
-   from viewport height (50/53/68 measured above) and recomputed on resize.
-   DOM stays bounded: the pool is fixed per viewport and recycled by
-   `week mod capacity`, so exactly one node is rebuilt per row scrolled.
+1. **`SNAP_ALIGN = 0.5` reads "month + .5" as boundary-centred.** Your words
+   were "snap to the next month+.5 … so I can see the end of month and the
+   beginning of the next month". So each detent is one month apart, and rest
+   position puts the boundary at the middle of the content area. If you meant
+   the boundary should sit higher — more of the incoming month, less of the
+   outgoing — `SNAP_ALIGN` is the single number to change.
 
-2. **`style.css` was added to the spec's file layout first, then created** —
-   the procedure the recurring-edit log in conventions.md prescribes. Colour
-   tokens stay in `index.html` (defined once); `style.css` is structure and
-   motion only.
+2. **Timed events are chips only.** With no compressed rows there is nothing
+   for the old thin-bar-when-compressed rule to serve. Bars are now all-day
+   and multi-day events exclusively.
 
-3. **`applyLens(node, t, height, y)`** — the stage 01 stub took `(node, t)`.
-   Height and position are lens-derived too, and routing them through the
-   same call keeps every DOM write in `render.ts` while `scroll.ts` owns the
-   arithmetic. One call per row per frame.
+3. **Header names the range, not one month.** At rest the view always
+   straddles a boundary, so "August 2026" would be wrong half the time. It
+   shows "Aug – Sep 2026" when two months are visible and "August 2026" when
+   only one is, and still cross-fades on change.
 
-4. **Timed events render twice, cross-faded.** The spec wants chips in the
-   lens and "a thin bar segment on their day only" when compressed. Rather
-   than toggling, the timed bar fades out and the chip fades in over the same
-   interval. Timed bars are packed into lanes *below* the all-day block so
-   chips have room and the all-day lanes never shift.
+4. **Bands key off month parity** (`month % 2`), so they alternate correctly
+   across a year boundary — December and January differ.
 
-5. **`MAX_LANES` = 6**, with a `+N` marker in the day cell for overflow.
-   The spec does not say what happens when a week is over-full.
+5. **Row height is proportional with clamps**, so a full month fits on any
+   viewport, rather than a fixed pixel height that would show two months on a
+   monitor and half of one on a phone.
 
-6. **A straddling week takes the month of its Thursday** (ISO convention)
-   for the sticky header — it matches what the row actually looks like.
+6. **`placeRow(node, y, height)` replaced `applyLens(node, t, …)`** — there is
+   no lens value any more. Two style writes per row per frame.
 
-7. **`prefs.lastDockedDay` is written but not read at launch.** The stage 03
-   contract says first load docks the current week + next, so that wins.
-   The pref is maintained and ready if you would rather restore the last
-   position — a launch-behaviour question, flagged for the gate.
-
-8. **Sign-in state is polled once a second in `main.ts`.** `auth.ts` exports
-   no change event by design and stage 03 must not modify 02's modules. The
-   button is the only dependent; a second of lag is invisible. The poll also
-   retries the month fetch when sign-in flips true, so the calendar fills in
-   after consent without a reload.
-
-9. **A weekday-initial strip (M T W T F S S) was added to the header**,
-   aligned to the same 7 columns. Not in the spec; without it the columns are
-   ambiguous on first look. Remove it if it reads as chrome.
-
-10. **New exports** (additive; 02's modules untouched): `render.createWeekNode`,
-    `render.mountedWeeks`, `scroll.onWindowChange`, `scroll.onDayTap`.
-    `onDayTap` is how stage 04 attaches the drawer without editing `scroll.ts`.
-
-## Not done, deliberately
-
-- No audio. The contract says the sound toggle is a pref stub only; `Prefs.soundEnabled`
-  exists and nothing reads it.
-- `onDayTap` currently logs to the console. Stage 04 replaces that.
-- Safe-area/notch behaviour is wired (`--safe-top`, `viewport-fit=cover`) but
-  only a real notched device proves it.
+7. **`prefs.lastDockedDay` is still written but not read at launch** — first
+   load rests on the boundary nearest today. Unchanged, still your call.
 
 ## Human gate checklist
 
-1. Phone. Flick three months ahead. Watch for: 60fps, rows lifting into the
-   lens and settling out, momentum ending docked, month header cross-fading,
-   haptic tick on each dock.
-2. **Try `DETENT_WEEKS = 1` as well as `2`** and record which you want.
-3. Scroll a year into the past. Months should fill in as you approach. In
-   devtools, confirm the `.week` node count stays flat while scrolling.
-4. Confirm the seeded-looking 3-week bar behaviour with a real 3-week event.
-5. Today button from a year away: it should return and dock, not teleport.
-6. Desktop: trackpad and mouse wheel both settle to a detent.
-7. Notched phone: lens still 35%, header clear of the notch.
+1. Phone. Flick three months. It should move ~30 days per flick and settle
+   softly with the boundary mid-screen.
+2. **Double-tap a day.** The page must not zoom. This is the fix for the bug
+   you hit; it needs a real touch device to confirm.
+3. Desktop, several window widths including narrow. No day number may be cut
+   off at the left edge.
+4. Is 6.5 weeks the right amount to see at once? `VISIBLE_WEEKS` is one number.
+5. Are the month bands strong enough to read the boundary without the label —
+   and not so strong they compete with the event colours? Tokens are
+   `--band-a/b` and `--band-a-we/b-we` in `index.html`.
+6. Scroll a year back; confirm the `.week` node count stays at 14 in devtools.
+7. Today button from a year away.

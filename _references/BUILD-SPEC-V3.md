@@ -1,4 +1,4 @@
-# BUILD SPEC v3 — Perpetual Calendar (vertical weeks, lens zoom, PWA)
+# BUILD SPEC v3 — Perpetual Calendar (vertical weeks, rolling month, PWA)
 
 Give this file to Claude Code in the repo along with `year-planner-v2.html`
 (reference for the day drawer, event form, category chips, and API-adjacent
@@ -19,59 +19,60 @@ month container: months are labels, not walls. February flows into March.
 Backed by the user's real Google Calendar. Full create/edit/delete. Categories
 (Work / Personal / Financial / Other) map to Google colorIds.
 
-## The core interaction: the lens
+## The core interaction: the rolling month
 
-There is no zoom slider. Zoom is a *place* on screen.
+*(Revised 2026-08-20. This replaces the "lens" mechanic — scroll-linked zoom
+with two-week detents — which was built, tried, and rejected: compressed rows
+made the shape of a month hard to read, which was the whole point of them.)*
 
-- A horizontal band ("the lens") is fixed in the viewport, vertically centered,
-  height = **~35% of viewport height** (proportional, never a fixed px height).
-- The lens holds **two week rows** at full detail: tall rows, event titles,
-  times, readable day numbers.
-- Weeks outside the lens are **compressed**: thin rows (~16–24px) showing only
-  colored commitment bars — the shape of your time, months of it visible above
-  and below the lens at once.
-- As the user scrolls, weeks approaching the lens **lift and expand** into it;
-  weeks leaving it settle back down into compression. The transition is
-  continuous with scroll position (scroll-linked interpolation of row height,
-  font opacity, detail reveal), not a toggle.
-- Scrolling **snaps in two-week detents**: when momentum ends, the nearest
-  week pair docks into the lens. Snapping must feel mechanical — momentum
-  settles into the detent, it does not hard-stop.
-- Each dock fires a subtle **haptic tick** on devices that support it
-  (`navigator.vibrate(8)` where available). Sound is OFF by default; a settings
-  toggle may enable a click. Do not spend effort on audio. **Motion is the
-  priority** — easing, lift, settle. It should feel like a mechanism, not an
-  animated list.
+There is no zoom and no lens. **Every week row is the same height, always at
+full detail.** The shape of a month is legible at a glance because all of it
+is legible all the time.
 
-On first load the lens contains the current week + next week, with today
-visibly marked.
+- Week rows are uniform, sized so that roughly **six and a half weeks fill the
+  viewport** — a full month plus its edges, visible at once, on a phone and a
+  27" monitor alike. Proportional to viewport height, within sane bounds.
+- Scrolling **snaps by month**. Each detent advances or retreats one month
+  (~30 days, rolling), and comes to rest with the **month boundary at the
+  vertical centre of the viewport**: the end of one month above it, the
+  beginning of the next below.
+- Momentum settles into the detent; it does not hard-stop. Landing should feel
+  soft, not mechanical.
+- Months are distinguished by an **alternating neutral background band**,
+  applied per day column so a week straddling a boundary shows both months.
+- Sound is OFF by default and no effort goes into audio. Haptics are off by
+  default too — the detent is visual, not tactile.
+
+On first load the view rests on the boundary nearest today, with today marked.
 
 ## Layout details
 
-- 7 equal columns. Weekend columns (Sat/Sun) get a subtle background shade.
-- Sticky header strip above the lens shows the month + year of the week
-  currently docked in the lens (e.g. "March 2027"). It cross-fades as the
-  docked week's month changes.
+- 7 equal columns. Weekend columns (Sat/Sun) get a subtle background shade,
+  layered over the month band so both remain readable.
+- Each month gets an alternating neutral background band, applied per day
+  column. A week straddling a boundary shows both bands side by side.
+- Sticky header strip shows the month(s) currently in view — "March 2027", or
+  "Feb – Mar 2027" when the view straddles a boundary, which at rest it does.
+  It cross-fades as the visible range changes.
 - A thin rule + small month label marks each month boundary inline in the
-  scroll, so boundaries are visible in the compressed regions too.
+  scroll, running from the 1st to the end of that week row.
 - **Multi-day/multi-week events render as horizontal bars spanning their days
   within each week row, wrapping across consecutive week rows** (like text
-  wraps). Same lane-packing as v2: longest-first placement. In compressed rows
-  bars are all you see; in the lens, bars carry titles.
-- Timed (non-all-day) events: in the lens, render as compact chips within
-  their day cell, sorted by start time, with start time shown. In compressed
-  rows they contribute a thin bar segment on their day only.
+  wraps). Same lane-packing as v2: longest-first placement. Bars carry titles;
+  a continuation carries none, so the title appears once per event.
+- Timed (non-all-day) events render as compact chips within their day cell,
+  sorted by start time, with start time shown.
 - Today: strong marker (filled day number), always findable via a "Today"
-  button in the header that animates the scroll back and re-docks.
-- Tap/click a day in the lens → day drawer (port from v2) with that day's
-  events and the add/edit form. Tapping a compressed week scrolls it into the
-  lens instead of opening anything.
+  button in the header that animates the scroll back and re-snaps.
+- Tap/click a day → day drawer (port from v2) with that day's events and the
+  add/edit form.
 
 ## Perpetual scroll mechanics
 
-- Virtualized: render only ~40 week rows around the viewport; recycle DOM
-  nodes as the user scrolls. Week index is the source of truth
-  (week 0 = week containing today; negative = past).
+- Virtualized: render only the week rows the viewport needs plus a small
+  buffer, and recycle DOM nodes as the user scrolls. Derive the count from
+  viewport height — rows are uniform, so it is simply how many fit. Week index
+  is the source of truth (week 0 = week containing today; negative = past).
 - Load events lazily by month as weeks approach the render window
   (fetch a month when any of its weeks is within ~8 weeks of the viewport),
   both directions. Cache per `year-month` in localStorage; render from cache
@@ -83,10 +84,10 @@ visibly marked.
 
 Modern, clean, inviting. Light surface, generous whitespace, restrained
 neutral type (system font stack is fine); the user's commitments are the only
-strong color on screen. No gradients-for-decoration, no card chrome. Depth is
-communicated by the lens: docked weeks get a barely-there elevation
-(shadow/scale ~1.01), compressed weeks sit flat. Dark mode: honor
-`prefers-color-scheme` with the same restraint.
+strong color on screen. No gradients-for-decoration, no card chrome, no
+elevation or scaling on rows. Structure is communicated by the alternating
+month bands and the weekend shade — both neutral, both quiet. Dark mode:
+honor `prefers-color-scheme` with the same restraint.
 
 ## PWA requirements
 
@@ -98,13 +99,13 @@ communicated by the lens: docked weeks get a barely-there elevation
 - Offline: app opens, renders from localStorage cache read-only, writes fail
   with a visible message and roll back. On reconnect, background refresh.
 - Installable on iOS/Android/desktop; verify viewport meta and safe-area
-  insets so the lens ratio holds on phones with notches.
+  insets so a full month still fits on phones with notches.
 
 ## Stack
 
 - Vite + vanilla TypeScript. No framework. Hand-rolled DOM + transforms
-  (the lens interpolation is easier without a VDOM in the way).
-- localStorage for event cache + prefs (last docked week, sound toggle).
+  (the scroll interpolation is easier without a VDOM in the way).
+- localStorage for event cache + prefs (last docked position, sound toggle).
 
 ## File layout
 
@@ -115,13 +116,13 @@ communicated by the lens: docked weeks get a barely-there elevation
 /src/auth.ts        — GIS token client; the ONLY file that knows about auth
 /src/gcal.ts        — Calendar API module; the ONLY file making network calls
 /src/state.ts       — event cache, week-index math, localStorage persistence
-/src/scroll.ts      — virtualizer, detent/snap physics, lens interpolation
+/src/scroll.ts      — virtualizer, month-snap physics
 /src/render.ts      — week rows, bars, lane packing, month labels, header
 /src/drawer.ts      — day drawer + event form (port from v2)
 /src/categories.ts  — category <-> colorId mapping
 /src/sw.ts          — service worker
 /src/types.ts
-/src/style.css     — app stylesheet (added at stage 03; the lens needs it)
+/src/style.css     — app stylesheet (added at stage 03)
 /.env.local         — VITE_GOOGLE_CLIENT_ID=... (gitignored)
 ```
 
@@ -166,11 +167,10 @@ calendar `primary`.
 
 ## Definition of done
 
-- `npm run dev` → sign in → lens shows this week + next, today marked, current
-  month in the header, compressed weeks visible above and below
-- Flick-scroll three months ahead: smooth 60fps, weeks lift into the lens and
-  settle out, momentum ends docked on a week pair, month header updates,
-  haptic tick fires on a phone
+- `npm run dev` → sign in → a full month is visible at once with today marked,
+  the month(s) in view named in the header, alternating month bands legible
+- Flick-scroll three months ahead: smooth 60fps, momentum settles softly onto
+  a month boundary centred in the viewport, month header updates
 - Scroll a year into the past: months load in as approached, no jank, no
   unbounded DOM growth
 - Create a 3-week all-day commitment → renders as a wrapping bar across three
@@ -178,7 +178,8 @@ calendar `primary`.
 - Edit one occurrence of a weekly event; delete the series with confirmation
 - Install as PWA on a phone; kill the network; app opens read-only from cache;
   a write fails visibly and rolls back
-- Lens is ~35% of viewport on a phone with a notch and on a 27" monitor alike
+- A full month fits the viewport on a phone with a notch and on a 27" monitor
+  alike; day numbers are never clipped at the left edge
 
 ---
 

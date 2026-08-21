@@ -1,6 +1,6 @@
-/* STAGE 03 — app stylesheet. Added to the spec's file layout at stage 03.
-   Colour tokens stay in index.html (defined once, per conventions.md);
-   this file is structure and motion only. */
+/* STAGE 03 — app stylesheet. Colour tokens live in index.html (defined once,
+   per conventions.md); this file is structure and motion only.
+   Revised 2026-08-20: uniform rows, no lens. */
 
 /* --- shell ---------------------------------------------------------------- */
 
@@ -18,8 +18,9 @@
   left: 0;
   right: 0;
   z-index: 10;
-  padding: calc(var(--safe-top) + 10px) 14px 6px;
-  background: linear-gradient(var(--surface) 62%, transparent);
+  padding: calc(var(--safe-top) + 10px) 14px 5px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--rule);
   pointer-events: none;
 }
 
@@ -30,7 +31,6 @@
   pointer-events: auto;
 }
 
-/* Month + year, cross-faded when the docked week changes month. */
 .mlabel {
   position: relative;
   flex: 1;
@@ -72,11 +72,10 @@
   display: none;
 }
 
-/* Weekday initials, aligned to the same 7 columns as every week row. */
 .dow {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  margin-top: 6px;
+  margin-top: 7px;
   font-size: 10px;
   letter-spacing: 0.08em;
   color: var(--ink-muted);
@@ -84,7 +83,7 @@
 }
 
 .dow span {
-  padding-left: 5px;
+  padding-left: 6px;
 }
 
 /* --- week rows ------------------------------------------------------------ */
@@ -98,22 +97,8 @@
   contain: layout paint style;
   will-change: transform;
 
-  /* Every lens-linked dimension is a function of --t, set per frame. */
-  --head-h: calc(22px * var(--t));
-  --lane-h: calc(4px + 12px * var(--t));
-  --detail: clamp(0, (var(--t) - 0.45) * 3, 1);
-  --detail-late: clamp(0, (var(--t) - 0.6) * 3.4, 1);
-}
-
-/* Barely-there elevation on docked rows; compressed rows sit flat. */
-.week::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  border-radius: 7px;
-  box-shadow: 0 8px 22px -8px rgba(0, 0, 0, 0.22), 0 1px 2px rgba(0, 0, 0, 0.05);
-  opacity: var(--t);
+  --head-h: 19px;
+  --lane-h: 16px;
 }
 
 .cols {
@@ -123,33 +108,38 @@
   grid-template-columns: repeat(7, 1fr);
 }
 
+/* Alternating month band, per column, with the weekend shade layered over it.
+   A week straddling a boundary shows both bands side by side. */
 .col {
   position: relative;
+  background: var(--band-a);
+}
+
+.col[data-band='1'] {
+  background: var(--band-b);
+}
+
+.col[data-we='1'] {
+  background: var(--band-a-we);
+}
+
+.col[data-band='1'][data-we='1'] {
+  background: var(--band-b-we);
 }
 
 .col + .col {
   box-shadow: inset 1px 0 0 var(--rule);
 }
 
-.col[data-we='1'] {
-  background: var(--surface-weekend);
-}
-
 .dnum {
   position: absolute;
-  top: 3px;
-  left: 4px;
+  top: 2px;
+  left: 3px;
   font-size: 11px;
-  line-height: 15px;
-  min-width: 15px;
+  line-height: 16px;
+  min-width: 16px;
   text-align: center;
   color: var(--ink-muted);
-  opacity: var(--detail);
-}
-
-/* Today: filled day number in the lens, a standing tint when compressed. */
-.col[data-today='1'] {
-  background: color-mix(in srgb, var(--cat-work) 9%, transparent);
 }
 
 .col[data-today='1'] .dnum {
@@ -165,30 +155,27 @@
   bottom: 2px;
   font-size: 9px;
   color: var(--ink-muted);
-  opacity: var(--detail-late);
 }
 
-/* Month boundary: a thin rule + label, visible in compressed regions too. */
+/* Month boundary: a thin rule from the 1st to the end of that week row. */
 .mrule {
   position: absolute;
-  left: 0;
   right: 0;
   top: 0;
   border-top: 1px solid var(--ink-muted);
-  opacity: 0.45;
+  opacity: 0.5;
   pointer-events: none;
 }
 
 .mrule span {
   position: absolute;
   left: 5px;
-  top: 1px;
+  top: 2px;
   font-size: 9px;
   letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--ink-muted);
-  background: var(--surface);
-  padding: 0 4px;
+  font-weight: 600;
 }
 
 /* --- bars (all-day + multi-week, lane-packed) ----------------------------- */
@@ -204,12 +191,12 @@
 
 .bar {
   position: absolute;
-  left: calc(var(--c0) / 7 * 100% + 1px);
-  width: calc(var(--cs) / 7 * 100% - 2px);
+  left: calc(var(--c0) / 7 * 100% + 2px);
+  width: calc(var(--cs) / 7 * 100% - 4px);
   top: calc(var(--lane) * var(--lane-h));
-  height: calc(var(--lane-h) * 0.76);
+  height: calc(var(--lane-h) - 3px);
   background: var(--cat);
-  border-radius: calc(1px + 3px * var(--t));
+  border-radius: 3px;
   display: flex;
   align-items: center;
   overflow: hidden;
@@ -225,7 +212,11 @@
 .bar[data-r='1'] {
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
-  width: calc(var(--cs) / 7 * 100% - 1px);
+  width: calc(var(--cs) / 7 * 100% - 2px);
+}
+
+.bar[data-l='1'][data-r='1'] {
+  width: calc(var(--cs) / 7 * 100%);
 }
 
 .bar[data-pending='1'] {
@@ -238,10 +229,9 @@
   line-height: 1;
   color: #fff;
   white-space: nowrap;
-  opacity: var(--detail-late);
 }
 
-/* --- timed-event chips (lens only) ---------------------------------------- */
+/* --- timed-event chips ---------------------------------------------------- */
 
 .chips {
   position: absolute;
@@ -249,19 +239,18 @@
   right: 0;
   top: var(--chips-top);
   bottom: 0;
-  opacity: var(--detail-late);
   pointer-events: none;
 }
 
 .chip {
   position: absolute;
-  left: calc(var(--c0) / 7 * 100% + 2px);
-  width: calc(100% / 7 - 5px);
+  left: calc(var(--c0) / 7 * 100% + 3px);
+  width: calc(100% / 7 - 7px);
   top: calc(var(--i) * 14px);
   height: 13px;
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   font-size: 10px;
   line-height: 1;
   color: var(--ink);
@@ -272,7 +261,7 @@
 .chip::before {
   content: '';
   width: 3px;
-  height: 9px;
+  height: 10px;
   border-radius: 2px;
   background: var(--cat);
   flex: none;
@@ -304,10 +293,4 @@ pre.selftest {
   padding: 1.5rem;
   font: 13px/1.7 ui-monospace, monospace;
   white-space: pre-wrap;
-}
-
-/* Timed events are thin bars when compressed and chips in the lens.
-   Swap the two continuously rather than toggling either. */
-.bar.timed {
-  opacity: calc(1 - var(--detail-late));
 }

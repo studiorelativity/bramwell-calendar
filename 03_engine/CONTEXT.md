@@ -11,23 +11,30 @@ The hard stage. Expect iteration; keep the human in the loop on motion feel.
   interfaces; do not reach around them
 
 ## Process
-1. `src/scroll.ts` — virtualizer (~40 recycled week rows, week index as
-   source of truth), two-week detent snapping (momentum settles into the
-   detent, never hard-stops), scroll-linked lens interpolation (row height,
-   opacity, detail reveal as continuous functions of distance-from-lens),
-   `navigator.vibrate(8)` on dock where supported.
-2. `src/render.ts` — week rows (7 columns, weekend shade), lens rows at full
-   detail vs. compressed bar-only rows, multi-week bars wrapping across rows
-   with longest-first lane packing, timed-event chips sorted by start time
-   in lens rows, inline month boundary rules, sticky cross-fading month/year
-   header, today marker, Today button with animated return-and-dock.
-3. Wire into `main.ts`: first load docks current week + next, today marked.
+*(Revised 2026-08-20 after the lens was built and rejected. See the spec's
+"The core interaction: the rolling month".)*
+
+1. `src/scroll.ts` — virtualizer (uniform recycled week rows, count derived
+   from viewport height, week index as source of truth), month snapping
+   (each detent = one month, resting with the month boundary at the vertical
+   centre of the viewport; momentum settles softly, never hard-stops).
+   Haptics off by default.
+2. `src/render.ts` — week rows (7 columns, weekend shade, alternating neutral
+   month band per day column), multi-week bars wrapping across rows with
+   longest-first lane packing, timed-event chips sorted by start time, inline
+   month boundary rules, sticky cross-fading header naming the month(s) in
+   view, today marker, Today button with animated return-and-snap.
+3. Wire into `main.ts`: first load rests on the boundary nearest today, today
+   marked.
 
 ## Constraints
 - Transform-based positioning only. No layout reads in the scroll handler —
   interpolation math on cached measurements.
-- Lens height is proportional (~35% viewport), never fixed px. Verify on a
-  notched-phone viewport and a desktop viewport.
+- Row height is proportional (~6.5 weeks fill the viewport), within sane px
+  bounds. Verify on a notched-phone viewport and a desktop viewport.
+- Nothing may overflow the row horizontally — no scaling of rows. Day numbers
+  clipping at the left edge was a real defect the first time round.
+- The page must not double-tap-zoom on a phone; the scroller owns the gesture.
 - No audio work. Sound toggle is a pref stub only; motion is the priority.
 - Do not modify 02's modules. If their interface is insufficient, stop and
   flag it — that is an upstream fix, decided at the gate, not silently patched.
@@ -38,9 +45,13 @@ The hard stage. Expect iteration; keep the human in the loop on motion feel.
   detent thresholds) so the decisions are recoverable
 
 ## Gate (human, on a real phone + desktop)
-- Flick three months ahead: 60fps, weeks lift into the lens and settle out,
-  momentum ends docked, header updates, haptic tick fires
+- Flick three months ahead: 60fps, momentum settles softly onto a month
+  boundary centred in the viewport, header updates
+- A full month is readable at a glance; alternating month bands make the
+  boundary obvious without reading labels
 - Scroll a year into the past: months load as approached, no jank, DOM node
   count stays bounded (verify in devtools)
 - A 3-week all-day event renders as a wrapping bar across three week rows
-- Today button returns and docks from anywhere
+- Today button returns and snaps from anywhere
+- Desktop: no day number clipped at the left edge, at any window width
+- Phone: double-tapping a day does not zoom the page
