@@ -8,7 +8,7 @@ Date: 2026-08-20 · Commit: `8d4343b`
 |---|---|
 | `npm run dev` serves without errors | **Pass.** Vite 8.2.2 ready in 88ms. `/` 200, `/manifest.webmanifest` 200, `/icon-192.png` 200, `/src/main.ts` 200. No warnings in the server log. |
 | `tsc --noEmit` passes — all stub imports resolve | **Pass.** Clean under `strict: true`. `npm run build` also succeeds (`tsc && vite build`), icons and manifest emitted to `dist/`. |
-| types.ts reviewed by human against the spec's API section | **Outstanding — human step.** See "For review" below. |
+| types.ts reviewed by human against the spec's API section | **Pass.** Signed off by the human 2026-08-20. Stage 01 gate closed. |
 
 Toolchain: node 26.5.0, npm 11.17.0, vite ^8.2.0, typescript ~6.0.2.
 
