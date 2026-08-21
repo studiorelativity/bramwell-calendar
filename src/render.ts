@@ -159,11 +159,17 @@ export function createWeekNode(): HTMLElement {
   return node;
 }
 
-function timeLabel(minute: number): string {
+/**
+ * "9:30", or "9" on the hour — compact, for chips where space is scarce.
+ * `meridiem` adds am/pm; the year view's hover panel has room and needs it,
+ * since a bare "2" could be either.
+ */
+export function timeLabel(minute: number, meridiem = false): string {
   const h = Math.floor(minute / 60);
   const m = minute % 60;
   const hour12 = h % 12 === 0 ? 12 : h % 12;
-  return m === 0 ? `${hour12}` : `${hour12}:${m < 10 ? `0${m}` : m}`;
+  const suffix = meridiem ? (h < 12 ? 'am' : 'pm') : '';
+  return m === 0 ? `${hour12}${suffix}` : `${hour12}:${m < 10 ? `0${m}` : m}${suffix}`;
 }
 
 /** Build (or recycle) the element for one week row. */

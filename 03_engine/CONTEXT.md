@@ -28,7 +28,9 @@ The hard stage. Expect iteration; keep the human in the loop on motion feel.
 3. `src/year.ts` — year view: week-aligned 28-column grid (14/7 on narrow
    viewports), first row indented by the weekday of 1 January, month badges,
    bands, today marker, per-day event bars, year stepping. Clicking a day
-   returns to the calendar view on that day.
+   returns to the calendar view on that day. Hovering a day raises a panel
+   listing the previous, hovered and next day with their events in full.
+   Month badges use one shared treatment across both views.
 4. Wire into `main.ts`: first load rests on the boundary nearest today, today
    marked; header toggles between calendar and year view.
 

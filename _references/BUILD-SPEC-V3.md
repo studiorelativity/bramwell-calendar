@@ -65,6 +65,10 @@ all 365 days, no scrolling on a desktop window.
   so a multi-day event occupies the same lane in every cell it covers and
   reads as a continuous run across the row.
 - Today is marked as strongly as in the main view.
+- **Hovering a day raises a panel** showing three days — the previous day, the
+  hovered day, and the next day — each with its events listed in full (title,
+  and start time for timed events). The year view is bars and lines at a
+  glance; the panel is how you read what is in them without leaving it.
 - `<` `>` in the header step the year. Clicking a day returns to the calendar
   view positioned on that day — the year view is an overview and a navigator.
 
@@ -78,7 +82,9 @@ all 365 days, no scrolling on a desktop window.
   "Feb – Mar 2027" when the view straddles a boundary, which at rest it does.
   It cross-fades as the visible range changes.
 - A thin rule + small month label marks each month boundary inline in the
-  scroll, running from the 1st to the end of that week row.
+  scroll, running from the 1st to the end of that week row. The label is a
+  filled badge, identical in both views — the same treatment in the calendar
+  and the year grid.
 - **Multi-day/multi-week events render as horizontal bars spanning their days
   within each week row, wrapping across consecutive week rows** (like text
   wraps). Same lane-packing as v2: longest-first placement. Bars carry titles;

@@ -113,10 +113,20 @@ function boot(): void {
     if (view === 'year') renderYear(currentYear());
   });
 
-  // A month landing in the cache repaints whichever view is showing.
-  onCacheChange(() => {
-    if (view === 'year') renderYear(currentYear());
-    else invalidateWeeks(mountedWeeks());
+  // A month landing in the cache repaints whichever view is showing. Opening
+  // the year view requests ~14 months, so filter to the ones that can change
+  // what is on screen rather than rebuilding 392 cells per arrival.
+  onCacheChange((months) => {
+    if (view !== 'year') {
+      invalidateWeeks(mountedWeeks());
+      return;
+    }
+    const year = currentYear();
+    const touches = months.some((key) => {
+      const y = Number(key.slice(0, 4));
+      return y >= year - 1 && y <= year + 1;
+    });
+    if (touches) renderYear(year);
   });
 
   onDockChange((week: WeekIndex) => savePrefs({ lastDockedDay: dayAt(week, 0) }));

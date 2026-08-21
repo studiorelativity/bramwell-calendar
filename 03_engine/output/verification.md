@@ -231,6 +231,63 @@ re-asserted explicitly for those selectors.
 4. **Opening the year fetches that year's months** via `ensureMonthsFor`, so
    a first visit to a distant year will fill in progressively as months land.
 
+## Fourth revision — 2026-08-21, hover panel and shared month badge
+
+1. **Month badge is now one treatment across both views.** `.mrule span`
+   (calendar) and `.ymonth` (year) share a single CSS rule — filled pill,
+   `--ink-muted` ground, `--surface` text. The calendar's label was previously
+   plain bold text.
+
+2. **Year-view hover panel.** Hovering a day raises a card showing three days
+   — previous, hovered, next — each listing its events in full with the
+   category colour and, for timed events, the start time. The hovered day is
+   emphasised. The panel is `pointer-events: none`, so it never blocks the
+   cell underneath it, and it flips above the cell when there is no room
+   below. Verified with a dispatched `mouseover` on 20 Aug:
+
+   ```
+     WED 19 AUG    Sabbatical · Tax filing
+   > THU 20 AUG    Sabbatical · Tax filing · 9:30am Standup · 2pm Dentist
+     FRI 21 AUG    Sabbatical
+   ```
+
+### A real bug this surfaced
+
+The panel appeared in a DOM dump but was **missing from a screenshot taken a
+few seconds later**. Not a test artifact: opening the year view calls
+`ensureMonthsFor` for the whole year, which requests ~14 months, and every
+arriving month fired `onCacheChange` -> `renderYear` -> `hidePanel`. In use
+that means the panel is torn down under the pointer, repeatedly, for as long
+as the year is loading — exactly when a user is most likely to be reading it.
+
+Two fixes:
+- `renderYear` now **preserves the panel across a repaint**: it re-finds the
+  hovered day's new cell and rebuilds the card in place, rather than hiding.
+  It only hides when the displayed year actually changes.
+- `onCacheChange` **filters by year** before repainting. A month landing in a
+  year that is not on screen no longer rebuilds 392 cells.
+
+Worth noting the general shape: a background refresh silently destroying
+transient UI is invisible to a DOM snapshot and only shows up if you look at
+a later moment. Same class of thing could affect the day drawer in stage 04.
+
+### Smaller fixes found while verifying
+
+- Event title was a bare text node, so the flex `gap` between the time and the
+  title did not apply — "9:30amStandup" ran together. Title is now a `<span>`,
+  which makes it a flex item.
+- `timeLabel` grew an optional `meridiem` argument. Chips stay compact
+  ("9:30"); the panel has room and needs it, since a bare "2" could be 2am or
+  2pm. Exported from `render.ts` rather than duplicated in `year.ts`.
+
+### Known limits
+
+- The panel is hover-only, so it is **desktop-only**. A phone gets nothing
+  equivalent; tapping a day still jumps to the calendar. If the year view
+  matters on the phone, that needs a deliberate answer.
+- Days with more than three events still show only three bars in the grid,
+  though the panel lists all of them on hover.
+
 ## Human gate checklist
 
 1. Phone. Flick three months. It should move ~30 days per flick and settle
@@ -253,3 +310,6 @@ re-asserted explicitly for those selectors.
    Are the event bars readable at that size, or do they need to be thicker?
 9. Year view on the phone drops to 7 columns and becomes a long scroll — check
    whether that is useful or whether 14 columns would be better there.
+10. **Hover panel**: hover across a busy week and confirm it keeps up, lands
+    the right way round near the screen edges, and never blocks the cell you
+    are trying to hover next. Note that it is desktop-only.

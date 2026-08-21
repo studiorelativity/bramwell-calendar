@@ -4,6 +4,7 @@
 // Reads the cache through state.ts, paints, and reports day clicks. It owns
 // no scroll position and makes no network calls.
 
+import { timeLabel } from './render.ts';
 import { civilFromDay, dayFromCivil, eventsForWeek, today, weekOf } from './state.ts';
 import type { CalendarEvent, DayNumber, WeekIndex } from './types.ts';
 
@@ -21,6 +22,10 @@ const MAX_BARS = 3;
 
 let host: HTMLElement | null = null;
 let shownYear = 0;
+/** Events per day for the year on screen, reused by the hover panel. */
+let dayEvents = new Map<number, CalendarEvent[]>();
+let popover: HTMLElement | null = null;
+let popoverDay = Number.NaN;
 const clickListeners: Array<(day: DayNumber) => void> = [];
 
 export function initYear(container: HTMLElement): void {
@@ -31,6 +36,96 @@ export function initYear(container: HTMLElement): void {
     const day = Number(cell.dataset.day) as DayNumber;
     for (const fn of clickListeners) fn(day);
   });
+
+  host.addEventListener('mouseover', (e) => {
+    const cell = (e.target as Element | null)?.closest<HTMLElement>('.ycell');
+    if (!cell?.dataset.day) {
+      hidePanel();
+      return;
+    }
+    const day = Number(cell.dataset.day);
+    if (day === popoverDay) return; // same cell: nothing to rebuild
+    popoverDay = day;
+    showPanel(cell, day as DayNumber);
+  });
+  host.addEventListener('mouseleave', hidePanel);
+  host.addEventListener('scroll', hidePanel, { passive: true });
+}
+
+// ---------------------------------------------------------------------------
+// Hover panel — the hovered day plus its neighbours, events in full
+// ---------------------------------------------------------------------------
+
+function hidePanel(): void {
+  popoverDay = Number.NaN;
+  if (popover) popover.hidden = true;
+}
+
+function dayCard(day: DayNumber, hovered: boolean): HTMLElement {
+  const card = document.createElement('div');
+  card.className = hovered ? 'ypday is-hovered' : 'ypday';
+
+  const civil = civilFromDay(day);
+  const dow = ((((day + 3) % 7) + 7) % 7);
+  const date = document.createElement('div');
+  date.className = 'ypdate';
+  date.textContent = `${WEEKDAYS[dow]} ${civil.day} ${MONTHS_SHORT[civil.month - 1]}`;
+  card.append(date);
+
+  const events = dayEvents.get(day) ?? [];
+  if (events.length === 0) {
+    const none = document.createElement('div');
+    none.className = 'ypnone';
+    none.textContent = 'Nothing';
+    card.append(none);
+    return card;
+  }
+  for (const event of events) {
+    const row = document.createElement('div');
+    row.className = 'ypev';
+    row.dataset.cat = event.category;
+    if (event.span.kind === 'timed') {
+      const when = document.createElement('b');
+      when.textContent = timeLabel(event.span.startMinute, true);
+      row.append(when);
+    }
+    // A span, not a bare text node: only flex items get the row's gap.
+    const title = document.createElement('span');
+    title.className = 'yptitle';
+    title.textContent = event.title;
+    row.append(title);
+    card.append(row);
+  }
+  return card;
+}
+
+function showPanel(cell: HTMLElement, day: DayNumber): void {
+  if (!popover) {
+    popover = document.createElement('div');
+    popover.className = 'ypop';
+    popover.hidden = true;
+    document.body.append(popover);
+  }
+  popover.replaceChildren(
+    dayCard((day - 1) as DayNumber, false),
+    dayCard(day, true),
+    dayCard((day + 1) as DayNumber, false),
+  );
+  popover.hidden = false;
+
+  // Layout read, but only on entering a new cell — not in any frame loop.
+  const rect = cell.getBoundingClientRect();
+  const width = popover.offsetWidth;
+  const height = popover.offsetHeight;
+  let left = rect.left;
+  let top = rect.bottom + 6;
+  if (left + width > window.innerWidth - 8) left = window.innerWidth - width - 8;
+  if (left < 8) left = 8;
+  // Not enough room below: flip above the cell.
+  if (top + height > window.innerHeight - 8) top = rect.top - height - 6;
+  if (top < 8) top = 8;
+  popover.style.left = `${left}px`;
+  popover.style.top = `${top}px`;
 }
 
 /** Clicking a day in the year view. main.ts returns to the calendar there. */
@@ -88,12 +183,19 @@ function eventsByDay(first: DayNumber, last: DayNumber): Map<number, CalendarEve
 /** Paint one calendar year. Cheap enough to rebuild wholesale: 365 cells. */
 export function renderYear(year: number): void {
   if (!host) return;
+  // A month landing in the cache repaints the year. If the pointer is still
+  // resting on a day, the panel must survive that: it is rebuilt against the
+  // new cells below rather than torn down mid-read.
+  const keepDay = year === shownYear ? popoverDay : Number.NaN;
   shownYear = year;
 
   const first = dayFromCivil(year, 1, 1);
   const last = dayFromCivil(year, 12, 31);
   const todayDay = today();
-  const byDay = eventsByDay(first, last);
+  // One day past each end, so the hover panel's neighbours resolve on Jan 1
+  // and Dec 31.
+  dayEvents = eventsByDay((first - 1) as DayNumber, (last + 1) as DayNumber);
+  const byDay = dayEvents;
 
   // Indent the first row by the weekday of 1 January, so column N is the same
   // weekday for the whole year.
@@ -160,4 +262,16 @@ export function renderYear(year: number): void {
   }
 
   host.replaceChildren(grid);
+
+  if (Number.isNaN(keepDay)) {
+    hidePanel();
+    return;
+  }
+  const cell = host.querySelector<HTMLElement>(`.ycell[data-day="${keepDay}"]`);
+  if (!cell) {
+    hidePanel();
+    return;
+  }
+  showPanel(cell, keepDay as DayNumber);
+  popoverDay = keepDay;
 }
