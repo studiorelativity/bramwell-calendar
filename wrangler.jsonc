@@ -1,0 +1,13 @@
+{
+  // Assets-only Worker: no `main`, no Worker script. Cloudflare serves the
+  // Vite build directly. Adding a script later would not change any of this.
+  "name": "bramwell-calendar",
+  "compatibility_date": "2026-08-21",
+  "assets": {
+    "directory": "./dist"
+    // not_found_handling is left at the default. The app is a single page with
+    // no client-side routing, so there is nothing to rewrite; SPA mode would
+    // mask real 404s, including a mistyped precache path — the exact bug the
+    // stage 04 gate caught.
+  }
+}
