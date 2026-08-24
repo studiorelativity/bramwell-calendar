@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>variants</title>
+<style>
+ html,body{margin:0;background:#0d0b0a;font:12px -apple-system,system-ui,sans-serif;color:#a49d94}
+ .row{position:relative;height:250px;overflow:hidden;border-bottom:1px solid #2e2924}
+ .row iframe{width:1280px;height:900px;border:0;position:absolute;left:0}
+ .lbl{position:absolute;z-index:9;left:10px;top:8px;background:#0d0b0aee;padding:3px 9px;
+      border-radius:4px;letter-spacing:.06em;text-transform:uppercase;font-size:10px}
+</style></head><body>
+<div class="row"><span class="lbl">B — ring only</span><iframe data-v="a" data-src="/?demo"></iframe></div>
+<div class="row"><span class="lbl">E — ring + 12% wash</span><iframe data-v="b" data-src="/?demo"></iframe></div>
+<div class="row"><span class="lbl">F — ring + 20% wash</span><iframe data-v="c" data-src="/?demo"></iframe></div>
+<div class="row"><span class="lbl">G — dimmed ring + 12% wash</span><iframe data-v="d" data-src="/?demo"></iframe></div>
+<script type="module">
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const until=async(fn,ms=15000)=>{const t=Date.now();for(;;){const v=fn();if(v)return v;
+  if(Date.now()-t>ms)return null;await sleep(80);}};
+const RING='inset 0 0 0 2px var(--ink)';
+const KILL=`.ygrid .ycell[data-day][data-near]{background:var(--band-b)!important}
+ .ygrid .ycell[data-day][data-near][data-we='1']{background:var(--band-b-we)!important}
+ .ygrid .ycell[data-day][data-today='1'] .ynum{background:var(--ink)!important;color:var(--surface)!important}
+ .ygrid .ycell[data-day][data-today='1'] .ydow{color:var(--ink-muted)!important}`;
+const V={
+ a:KILL+`.ygrid .ycell[data-day][data-today='1']{background:var(--band-b)!important;box-shadow:${RING}}`,
+ b:KILL+`.ygrid .ycell[data-day][data-today='1']{background:rgba(var(--today-rgb),0.12)!important;box-shadow:${RING}}`,
+ c:KILL+`.ygrid .ycell[data-day][data-today='1']{background:rgba(var(--today-rgb),0.20)!important;box-shadow:${RING}}`,
+ d:KILL+`.ygrid .ycell[data-day][data-today='1']{background:rgba(var(--today-rgb),0.12)!important;
+     box-shadow:inset 0 0 0 2px rgba(var(--today-rgb),0.55)}`};
+for(const f of document.querySelectorAll('iframe')){
+  await new Promise(r=>{f.addEventListener('load',r,{once:true});f.src=f.dataset.src;});
+  const D=f.contentDocument;
+  const btn=await until(()=>[...D.querySelectorAll('[data-view]')].find(b=>b.dataset.view==='year'));
+  btn.click();
+  const cell=await until(()=>D.querySelector('.ycell[data-today="1"]'));
+  const css=V[f.dataset.v];
+  if(css){const st=D.createElement('style');st.textContent=css;D.head.append(st);}
+  await sleep(250);
+  // Park today's row a little below the sticky header.
+  const top=cell.getBoundingClientRect().top+(D.scrollingElement?.scrollTop||0);
+  f.style.top=`${-(top-110)}px`;
+}
+await sleep(400);
+</script></body></html>

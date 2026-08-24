@@ -36,7 +36,7 @@ declare const self: WorkerScope;
 // v4 (stage 07 deploy): the shell is no longer served cache-first, so this no
 // longer has to be bumped on every shell change — that requirement was the bug.
 // Bumped once here to evict the v3 caches holding a pre-stage-07 index.html.
-const CACHE = 'bramwell-shell-v4';
+const CACHE = 'bramwell-shell-v5';
 /**
  * Only paths the build actually emits at these URLs. The manifest, JS and CSS
  * are content-hashed into /assets/ and cannot be named here; they are picked

@@ -78,8 +78,11 @@ all 365 days, no scrolling on a desktop window.
 *(Appended 2026-08-23, stage 05.)* The year view shares the calendar's
 visual system: alternating month bands with the weekend shade, 1px
 hairlines between cells, a 2px strong rule on each month's leading edge,
-the month badge pill, and the today ring scaled to cell size. Per-day event
-bars stay full-color (tinting does not read at 4px).
+the month badge pill, and the today ring scaled to cell size. Today's cell
+additionally carries a 1.5px inset outline in `--ink` — one cell, no fill,
+no gradient, no bleed into neighboring days *(chosen 2026-08-24, replacing
+a solid-fill-plus-gradient treatment that violated Visual direction)*.
+Per-day event bars stay full-color (tinting does not read at 4px).
 
 *(Revised 2026-08-24.)* At year scale a ring on one 44px cell out of 365 is
 not findable, so **today is a solid ink cell** with the surrounding days
