@@ -79,7 +79,14 @@ all 365 days, no scrolling on a desktop window.
 visual system: alternating month bands with the weekend shade, 1px
 hairlines between cells, a 2px strong rule on each month's leading edge,
 the month badge pill, and the today ring scaled to cell size. Per-day event
-bars stay full-color (tinting does not read at 4px). The hover/tap panel is
+bars stay full-color (tinting does not read at 4px).
+
+*(Revised 2026-08-24.)* At year scale a ring on one 44px cell out of 365 is
+not findable, so **today is a solid ink cell** with the surrounding days
+fading off it: a short lead-in on the day before, a tail out to nothing
+across the two days after. Ink, not a fifth hue — the four category colors
+are spoken for and commitments stay the only strong color on screen. Today's
+day number inverts on the solid cell. The hover/tap panel is
 a card in the same tokens: three day rows, hovered day emphasized on a band
 surface, events with category dots and meridiem times. The add button is
 present here too, pre-filled with today.

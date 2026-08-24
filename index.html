@@ -40,6 +40,12 @@
         --rule: #e5e2dc;
         --rule-strong: #d6d2ca;
         --hover: rgba(28, 25, 23, 0.045);
+        /* Today's glow in the year grid. Channels, not a colour, so the same
+           token drives the solid cell and the gradients that fade off it. */
+        --today-rgb: 28, 25, 23;
+        /* Channels for --surface, so text on a solid today cell can be set
+           back at partial opacity. */
+        --surface-rgb: 250, 249, 247;
 
         --safe-top: env(safe-area-inset-top, 0px);
         --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -62,6 +68,8 @@
           --rule: #2e2924;
           --rule-strong: #3a342c;
           --hover: rgba(243, 241, 238, 0.05);
+          --today-rgb: 243, 241, 238;
+          --surface-rgb: 21, 18, 16;
 
           /* Brightened category variants: the light-mode hues fail contrast
              on tinted dark fills. */

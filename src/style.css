@@ -481,11 +481,53 @@ pre.selftest {
   color: var(--ink);
 }
 
-.ycell[data-today='1'] .ynum {
-  background: var(--ink);
+/* Today in the year grid: a solid cell that the neighbouring days fade off,
+   so the eye lands on it without scanning. Same visual language as the
+   calendar's filled day number — today is ink, not a fifth colour.
+
+   The [data-day] in these selectors is a specificity bump, not a filter:
+   .ycell[data-band='1'][data-we='1'] is (0,3,0) and would otherwise win on a
+   banded weekend, so today's glow would silently vanish for two days a week.
+   Every real cell carries data-day, so it costs nothing and matches nothing
+   extra.
+
+   The glow is drawn per cell, so where today sits at a row edge the fade
+   continues on the next row rather than wrapping visually. 28 columns make
+   that rare and it reads as a soft edge, not a break. */
+.ygrid .ycell[data-day][data-today='1'] {
+  background: rgba(var(--today-rgb), 0.92);
+}
+
+/* The day before: a short lead-in, colour banked against today's edge. */
+.ygrid .ycell[data-day][data-near='-1'] {
+  background: linear-gradient(to right, transparent 45%, rgba(var(--today-rgb), 0.26) 100%);
+}
+
+/* After today: a longer tail, out to nothing across two days. */
+.ygrid .ycell[data-day][data-near='1'] {
+  background: linear-gradient(
+    to right,
+    rgba(var(--today-rgb), 0.32) 0%,
+    rgba(var(--today-rgb), 0.1) 60%,
+    transparent 100%
+  );
+}
+
+.ygrid .ycell[data-day][data-near='2'] {
+  background: linear-gradient(to right, rgba(var(--today-rgb), 0.09) 0%, transparent 55%);
+}
+
+/* On the solid cell the filled pill would vanish into its own background, so
+   today's number inverts instead: the cell is the marker now. */
+.ygrid .ycell[data-day][data-today='1'] .ynum {
+  background: transparent;
   color: var(--surface);
   border-radius: 999px;
   padding: 0 5px;
+}
+
+.ygrid .ycell[data-day][data-today='1'] .ydow {
+  color: rgba(var(--surface-rgb), 0.72);
 }
 
 
