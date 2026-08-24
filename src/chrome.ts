@@ -23,6 +23,10 @@ export interface ChromeCallbacks {
   onViewChange: (view: ViewName) => void;
   /** Open the add form on the contextually right day (main decides which). */
   onAdd: () => void;
+  /** Enter demo mode (stage 06). */
+  onDemo: () => void;
+  /** Leave demo mode and start real sign-in (stage 06). */
+  onDemoExit: () => void;
 }
 
 let callbacks: ChromeCallbacks | null = null;
@@ -31,6 +35,7 @@ let sheet: HTMLElement | null = null;
 let fab: HTMLButtonElement | null = null;
 let avatarBtn: HTMLButtonElement | null = null;
 let reconnectPill: HTMLButtonElement | null = null;
+let demoPill: HTMLButtonElement | null = null;
 let accountStatus: HTMLElement | null = null;
 let accountAction: HTMLButtonElement | null = null;
 
@@ -79,8 +84,10 @@ function buildFirstRun(): HTMLElement {
         <span class="fr-g">G</span>Connect Google Calendar
       </button>
       <p class="fr-fine">Your events stay in Google Calendar. Nothing is stored anywhere else.</p>
+      <button class="fr-demo" type="button">Try the demo</button>
     </div>`;
   screen.querySelector('.fr-connect')?.addEventListener('click', () => signIn());
+  screen.querySelector('.fr-demo')?.addEventListener('click', () => callbacks?.onDemo());
   document.body.append(screen);
   return screen;
 }
@@ -210,6 +217,15 @@ export function initChrome(cb: ChromeCallbacks): void {
   reconnectPill = document.getElementById('reconnect-pill') as HTMLButtonElement | null;
   reconnectPill?.addEventListener('click', () => signIn());
 
+  // Demo pill (stage 06): lives where the avatar would, exits demo into
+  // real sign-in. Injected here rather than in index.html because it is
+  // meaningless without this module.
+  demoPill = el('button', 'hbtn demopill', 'Demo · Connect');
+  demoPill.type = 'button';
+  demoPill.hidden = true;
+  avatarBtn?.before(demoPill);
+  demoPill.addEventListener('click', () => cb.onDemoExit());
+
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && sheet && !sheet.hidden) toggleSheet(false);
   });
@@ -224,15 +240,18 @@ export function initChrome(cb: ChromeCallbacks): void {
  *                            first-run screen never covers a warm cache)
  * - auth                   → calendar + avatar dot
  */
-export function setAuthState(signedIn: boolean, warmCache: boolean): void {
-  const showFirstRun = !signedIn && !warmCache;
+export function setAuthState(signedIn: boolean, warmCache: boolean, demo = false): void {
+  // Demo (stage 06): a populated calendar with the demo pill in the
+  // avatar's place. No first-run, no reconnect, no settings entry point.
+  const showFirstRun = !demo && !signedIn && !warmCache;
   if (firstRun) firstRun.hidden = !showFirstRun;
   if (fab) fab.hidden = showFirstRun;
   if (avatarBtn) {
-    avatarBtn.hidden = showFirstRun;
+    avatarBtn.hidden = showFirstRun || demo;
     avatarBtn.classList.toggle('is-on', signedIn);
   }
-  if (reconnectPill) reconnectPill.hidden = signedIn || showFirstRun;
+  if (reconnectPill) reconnectPill.hidden = demo || signedIn || showFirstRun;
+  if (demoPill) demoPill.hidden = !demo;
   if (sheet && !sheet.hidden) paintAccountRow();
   // Signing out with the sheet open while the cache is cold: the first-run
   // screen takes over, so the sheet must yield.

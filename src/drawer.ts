@@ -12,6 +12,8 @@ import {
   dayFromCivil,
   deleteEvent,
   eventsOnDay,
+  noteForDay,
+  saveNote,
   updateEvent,
 } from './state.ts';
 import type {
@@ -42,6 +44,12 @@ let els: Record<string, HTMLElement> = {};
 let currentDay: DayNumber | null = null;
 let editing: CalendarEvent | null = null;
 let open = false;
+/**
+ * STAGE 07 — the note editor is open. Same transient-UI rule as the event
+ * form: a month landing from a background refresh must not wipe what is
+ * being typed, so refresh() stands down while this is true.
+ */
+let notingOpen = false;
 
 // -- small display-boundary helpers ------------------------------------------
 
@@ -128,6 +136,40 @@ function build(host: HTMLElement): void {
   close.textContent = '×';
   close.addEventListener('click', closeDrawer);
   head.append(date, close);
+
+  // --- notes panel (STAGE 07), above the events list per the spec
+  const notes0 = document.createElement('section');
+  notes0.className = 'dr-notes';
+
+  const noteView = document.createElement('button');
+  noteView.type = 'button';
+  noteView.className = 'dr-noteview';
+  noteView.addEventListener('click', () => showNoteEditor(true));
+
+  const noteEdit = document.createElement('div');
+  noteEdit.className = 'dr-noteedit';
+  noteEdit.hidden = true;
+  const noteText = document.createElement('textarea');
+  noteText.rows = 4;
+  noteText.placeholder = 'A note for this day…';
+  const noteErr = document.createElement('div');
+  noteErr.className = 'formerr';
+  noteErr.hidden = true;
+  const noteFoot = document.createElement('div');
+  noteFoot.className = 'dr-notefoot';
+  const noteCancel = document.createElement('button');
+  noteCancel.type = 'button';
+  noteCancel.className = 'btn';
+  noteCancel.textContent = 'Cancel';
+  noteCancel.addEventListener('click', () => showNoteEditor(false));
+  const noteSave = document.createElement('button');
+  noteSave.type = 'button';
+  noteSave.className = 'btn primary grow';
+  noteSave.textContent = 'Save';
+  noteSave.addEventListener('click', () => void onSaveNote());
+  noteFoot.append(noteCancel, noteSave);
+  noteEdit.append(noteText, noteErr, noteFoot);
+  notes0.append(noteView, noteEdit);
 
   // --- list
   const list = document.createElement('div');
@@ -253,12 +295,13 @@ function build(host: HTMLElement): void {
   formFoot.append(del, cancel, save);
   form.append(body, formFoot);
 
-  panel.append(head, list, foot, form);
+  panel.append(head, notes0, list, foot, form);
   host.append(overlay, panel);
 
   els = {
     date, list, foot, form, title, cats, startDate, endDate, allDay,
     times, startTime, endTime, repeat, notes, scope, error, del, save,
+    notes0, noteView, noteEdit, noteText, noteErr, noteSave,
   };
 }
 
@@ -286,6 +329,62 @@ function paintCategories(): void {
   }
 }
 
+// -- notes (STAGE 07) ----------------------------------------------------------
+// The drawer knows nothing about extended properties or upsert rules: it reads
+// noteForDay() and writes saveNote(). Deleting is saving empty text.
+
+/** The note's text: the full body, falling back to the derived title. */
+function noteTextOf(note: CalendarEvent | undefined): string {
+  return note?.notes ?? note?.title ?? '';
+}
+
+function paintNote(): void {
+  if (currentDay === null || !els.noteView) return;
+  // Never repaint under an open editor — that is the transient-UI rule.
+  if (notingOpen) return;
+  const text = noteTextOf(noteForDay(currentDay));
+  els.noteView.textContent = text || '+ Add a note';
+  els.noteView.dataset.empty = text ? '0' : '1';
+}
+
+function showNoteEditor(on: boolean): void {
+  if (currentDay === null) return;
+  notingOpen = on;
+  els.noteView.hidden = on;
+  els.noteEdit.hidden = !on;
+  els.noteErr.hidden = true;
+  if (on) {
+    const area = els.noteText as HTMLTextAreaElement;
+    area.value = noteTextOf(noteForDay(currentDay));
+    area.focus();
+  } else {
+    paintNote();
+  }
+}
+
+async function onSaveNote(): Promise<void> {
+  if (currentDay === null) return;
+  const area = els.noteText as HTMLTextAreaElement;
+  const text = area.value;
+  const save = els.noteSave as HTMLButtonElement;
+  save.disabled = true;
+  save.textContent = 'Saving…';
+  try {
+    await saveNote(currentDay, text);
+    toast(text.trim() ? 'Note saved' : 'Note deleted');
+    // Clear the guard before repainting, or paintNote() would stand down.
+    notingOpen = false;
+    showNoteEditor(false);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Save failed.';
+    els.noteErr.textContent = message;
+    els.noteErr.hidden = false;
+    toast(message, 'bad');
+  }
+  save.disabled = false;
+  save.textContent = 'Save';
+}
+
 // -- list ----------------------------------------------------------------------
 
 function timeText(event: CalendarEvent): string {
@@ -303,7 +402,9 @@ function paintList(): void {
   const dow = ((((currentDay + 3) % 7) + 7) % 7);
   els.date.textContent = `${DAYS_FULL[dow]}, ${MONTHS[civil.month - 1]} ${civil.day}`;
 
-  const events = eventsOnDay(currentDay);
+  paintNote();
+
+  const events = eventsOnDay(currentDay).filter((event) => !event.isDayNote);
   els.list.replaceChildren();
   if (events.length === 0) {
     const empty = document.createElement('div');
@@ -335,6 +436,7 @@ function paintList(): void {
 function showForm(on: boolean): void {
   els.list.hidden = on;
   els.foot.hidden = on;
+  els.notes0.hidden = on;
   els.form.hidden = !on;
   els.error.hidden = true;
   if (!on) {
@@ -494,7 +596,9 @@ export function openDay(day: DayNumber): void {
   currentDay = day;
   editing = null;
   open = true;
+  notingOpen = false;
   root.hidden = false;
+  showNoteEditor(false);
   showForm(false);
   paintList();
 }
@@ -519,6 +623,7 @@ export function closeDrawer(): void {
   open = false;
   root.hidden = true;
   editing = null;
+  notingOpen = false;
 }
 
 export function isOpen(): boolean {
@@ -527,8 +632,9 @@ export function isOpen(): boolean {
 
 /**
  * Repaint the day list after a background refresh. Deliberately a no-op while
- * the form is showing: a month arriving must never wipe what is being typed.
+ * the form OR the note editor is showing: a month arriving must never wipe
+ * what is being typed.
  */
 export function refresh(): void {
-  if (open && els.form && els.form.hidden) paintList();
+  if (open && els.form && els.form.hidden && !notingOpen) paintList();
 }

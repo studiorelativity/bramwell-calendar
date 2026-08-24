@@ -24,6 +24,12 @@ let host: HTMLElement | null = null;
 let shownYear = 0;
 /** Events per day for the year on screen, reused by the hover panel. */
 let dayEvents = new Map<number, CalendarEvent[]>();
+/**
+ * STAGE 07 — days carrying a note. Notes are excluded from dayEvents entirely
+ * (no cell bar, no panel row); the panel marks them on the date line instead,
+ * which keeps the note discoverable without spending one of the 3 bar slots.
+ */
+let noteDays = new Set<number>();
 let popover: HTMLElement | null = null;
 let popoverDay = Number.NaN;
 const clickListeners: Array<(day: DayNumber) => void> = [];
@@ -86,13 +92,20 @@ function dayCard(day: DayNumber, hovered: boolean): HTMLElement {
   const date = document.createElement('div');
   date.className = 'ypdate';
   date.textContent = `${WEEKDAYS[dow]} ${civil.day} ${MONTHS_SHORT[civil.month - 1]}`;
+  if (noteDays.has(day)) {
+    const dot = document.createElement('span');
+    dot.className = 'ypnote';
+    dot.title = 'Has a note';
+    date.append(dot);
+  }
   card.append(date);
 
   const events = dayEvents.get(day) ?? [];
   if (events.length === 0) {
     const none = document.createElement('div');
     none.className = 'ypnone';
-    none.textContent = 'Nothing';
+    // A day holding only a note is not "Nothing" — the dot above says so.
+    none.textContent = noteDays.has(day) ? 'Note only' : 'Nothing';
     card.append(none);
     return card;
   }
@@ -167,6 +180,7 @@ function columnsFor(width: number): number {
 function eventsByDay(first: DayNumber, last: DayNumber): Map<number, CalendarEvent[]> {
   const byDay = new Map<number, CalendarEvent[]>();
   const seen = new Set<string>();
+  noteDays = new Set<number>();
   const firstWeek: number = weekOf(first);
   const lastWeek: number = weekOf(last);
 
@@ -176,6 +190,10 @@ function eventsByDay(first: DayNumber, last: DayNumber): Map<number, CalendarEve
       seen.add(event.id);
       const from = Math.max(event.span.start, first);
       const to = Math.min(event.span.end, last);
+      if (event.isDayNote) {
+        for (let d = from; d <= to; d += 1) noteDays.add(d);
+        continue;
+      }
       for (let d = from; d <= to; d += 1) {
         const list = byDay.get(d);
         if (list) list.push(event);

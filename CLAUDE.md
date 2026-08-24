@@ -20,6 +20,9 @@ verification artifacts only.
 | Auth, Calendar API, cache, categories | 02_data | 02_data/CONTEXT.md |
 | Virtualizer, lens, detents, rendering | 03_engine | 03_engine/CONTEXT.md |
 | Day drawer, service worker, PWA, offline | 04_shell | 04_shell/CONTEXT.md |
+| Visual pass, first-run, settings, FAB | 05_polish | 05_polish/CONTEXT.md |
+| Demo mode, README, open-source prep | 06_share | 06_share/CONTEXT.md |
+| Day notes (extended-property events) | 07_notes | 07_notes/CONTEXT.md |
 
 ## Rules
 - One stage per session. Read only that stage's CONTEXT.md and the spec

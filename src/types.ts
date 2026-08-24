@@ -106,6 +106,12 @@ export interface CalendarEvent {
   recurrence?: string[];
   /** Set while an optimistic write is outstanding. */
   pending?: PendingWrite;
+  /**
+   * STAGE 07 — this event is a day note, not a calendar event. Set by gcal.ts
+   * from the extended property at the wire boundary; nothing else sets it on
+   * read. A note never becomes a bar, a chip, or a lane.
+   */
+  isDayNote?: true;
 }
 
 /** What the day-drawer form produces; what gcal.ts turns into a wire payload. */
@@ -115,6 +121,13 @@ export interface EventDraft {
   category: CategoryName;
   span: EventSpan;
   recurrence?: string[];
+  /**
+   * STAGE 07 — write this as a day note. gcal.ts is the only reader: it emits
+   * the extended property and derives `summary` from the text. Without this,
+   * the write path has no way to say "note" and the extended-property string
+   * would have to leak out of gcal.ts. See 07_notes/output/verification.md.
+   */
+  isDayNote?: true;
 }
 
 // ---------------------------------------------------------------------------

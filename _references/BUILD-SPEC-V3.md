@@ -145,6 +145,56 @@ A sheet opened from the avatar: account row with sign-out, snap granularity
 (off, reserved). Backed entirely by existing prefs; no new storage. A
 background refresh must not close or reset the sheet.
 
+## Demo mode
+
+*(Added 2026-08-23, stage 06 — the public-sharing stage.)*
+
+A no-auth path so anyone can feel the product without connecting a
+calendar. Entry: a "Try the demo" secondary action on the first-run
+screen, or `?demo` in the URL (the shareable link).
+
+- Demo seeds a deterministic ~17 months of plausible events (same for
+  every visitor, generated around today) into the **in-memory** cache
+  only. localStorage is never written in demo; `ensureMonthsFor` and every
+  other network path is inert. DevTools must show zero requests to
+  googleapis.com.
+- Everything else behaves identically: scroll, snap, year view, hover
+  panel, drawer, FAB. Writes reject before the optimistic apply with
+  "Demo — connect your Google Calendar to save." surfaced in the form and
+  toast; nothing is applied, nothing rolls back.
+- The header shows a demo pill ("Demo · Connect") in place of the avatar.
+  Clicking it (or Connect anywhere) exits demo: demo months are dropped,
+  the real cache reloads from localStorage, and sign-in proceeds.
+- Demo state does not survive a reload and is never persisted.
+
+## Day notes
+
+*(Added 2026-08-23, stage 07.)*
+
+One free-text note per day, stored in Google Calendar itself — no new
+scope, no second backend. (Keep integration is impossible: its API is
+enterprise-only, no consumer access.)
+
+- **Wire format**: a day note is an all-day single-day event with
+  `extendedProperties.private.bramwell = "daynote"`. Its `summary` is the
+  note's first line (truncated to 60 chars); the full text lives in
+  `description`. colorId is the `other` mapping. In the official Google
+  Calendar apps it appears as a quiet all-day event — that portability is
+  a feature, not a leak.
+- **One note per day**: saving when a note exists patches it (upsert);
+  saving empty text deletes it. The app never creates a second daynote on
+  the same day.
+- **Rendering**: a day note is NEVER a bar or chip and never occupies a
+  lane. The day cell shows a small neutral marker (bottom-right, distinct
+  from the "+N" overflow at bottom-left); the day drawer gets a Notes
+  panel — the note text with an edit affordance, above the events list.
+- **Writes** go through the existing optimistic flow (UI → state.ts →
+  gcal.ts). Offline: visible failure + rollback, same as events. Demo:
+  rejects with the demo message, and the demo seed includes two day notes
+  so the panel and marker are visible in the demo.
+- A background month refresh must never wipe note text being typed
+  (same transient-UI rule the drawer form already obeys).
+
 ## Perpetual scroll mechanics
 
 - Virtualized: render only the week rows the viewport needs plus a small
@@ -295,6 +345,12 @@ calendar `primary`.
   returns to the first-run screen
 - In dark mode, the month boundary is readable from the bands alone on a
   phone at arm's length — in both the calendar and the year view
+- `?demo` (and the first-run "Try the demo") opens a populated calendar
+  with no sign-in and zero googleapis.com requests; a save attempt fails
+  visibly with the demo message; Connect exits demo into real sign-in
+- A note saved on a day shows the cell marker and survives reload; its
+  event in the Google Calendar app carries the first line as its title;
+  editing to empty deletes it; a daynote never renders as a bar or chip
 
 ---
 

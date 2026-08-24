@@ -1035,6 +1035,33 @@ pre.selftest {
   margin-top: 14px;
 }
 
+/* Stage 06: demo entry + exit. */
+.fr-demo {
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  margin-top: 18px;
+}
+
+.fr-demo:hover {
+  color: var(--ink);
+}
+
+.demopill {
+  color: var(--cat-work);
+  border-color: var(--cat-work);
+}
+
+.demopill[hidden] {
+  display: none;
+}
+
 .sheet-overlay {
   position: fixed;
   inset: 0;
@@ -1195,4 +1222,91 @@ pre.selftest {
 
 .offline[hidden] {
   display: none;
+}
+
+/* --- day notes (stage 07) --------------------------------------------------- */
+
+/* Cell marker: bottom-RIGHT, so it never collides with "+N" at bottom-left.
+   Neutral by design — a note is not a category and must not read as one. */
+.notedot {
+  position: absolute;
+  right: 4px;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--ink-muted);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.notedot[hidden] {
+  display: none;
+}
+
+/* Year view: the panel's date line carries the marker instead of spending one
+   of the three bar slots. */
+.ypnote {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin-left: 5px;
+  border-radius: 999px;
+  background: var(--ink-muted);
+  vertical-align: middle;
+}
+
+/* Notes panel, above the events list. */
+.dr-notes {
+  padding: 10px 12px 0;
+}
+
+.dr-notes[hidden] {
+  display: none;
+}
+
+.dr-noteview {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 1px dashed var(--rule);
+  border-radius: 6px;
+  background: transparent;
+  padding: 9px 11px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+
+/* The empty state is an invitation, not content. */
+.dr-noteview[data-empty='1'] {
+  color: var(--ink-muted);
+}
+
+.dr-noteview[hidden] {
+  display: none;
+}
+
+.dr-noteedit[hidden] {
+  display: none;
+}
+
+.dr-noteedit textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 13px;
+  padding: 9px 11px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  resize: vertical;
+}
+
+.dr-notefoot {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
 }

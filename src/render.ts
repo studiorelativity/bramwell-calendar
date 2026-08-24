@@ -37,6 +37,9 @@ interface WeekLayout {
   chips: Array<{ event: CalendarEvent; col: number; index: number }>;
   laneCount: number;
   more: number[];
+  /** Columns carrying a day note. Collected here so the marker costs nothing
+      extra: the row's events have already been walked once. */
+  notes: boolean[];
 }
 
 function clampCol(n: number): number {
@@ -64,7 +67,17 @@ function layoutWeek(week: WeekIndex): WeekLayout {
 
   const allDay: CalendarEvent[] = [];
   const timed: CalendarEvent[] = [];
+  const notes = new Array<boolean>(7).fill(false);
   for (const event of eventsForWeek(week)) {
+    // STAGE 07 — a day note is never a bar, a chip, or a lane, and never
+    // counts toward "+N". Filtering here rather than at each consumer keeps
+    // lane numbering for ordinary events byte-identical to pre-stage output.
+    if (event.isDayNote) {
+      for (let c = clampCol(event.span.start - first); c <= clampCol(event.span.end - first); c += 1) {
+        notes[c] = true;
+      }
+      continue;
+    }
     (event.span.kind === 'allDay' ? allDay : timed).push(event);
   }
 
@@ -121,7 +134,7 @@ function layoutWeek(week: WeekIndex): WeekLayout {
     list.forEach((event, index) => chips.push({ event, col, index }));
   }
 
-  return { bars, chips, laneCount: taken.length, more };
+  return { bars, chips, laneCount: taken.length, more, notes };
 }
 
 // ---------------------------------------------------------------------------
@@ -143,6 +156,8 @@ export function createWeekNode(): HTMLElement {
     col.append(
       Object.assign(document.createElement('span'), { className: 'dnum' }),
       Object.assign(document.createElement('span'), { className: 'more' }),
+      // Bottom-RIGHT; "+N" owns bottom-left, so the two never collide.
+      Object.assign(document.createElement('span'), { className: 'notedot', hidden: true }),
     );
     cols.append(col);
   }
@@ -195,6 +210,7 @@ export function renderWeekRow(week: WeekIndex, node: HTMLElement): void {
     col.dataset.today = day === todayDay ? '1' : '0';
     (col.firstElementChild as HTMLElement).textContent = String(civil.day);
     (col.children[1] as HTMLElement).textContent = layout.more[i] ? `+${layout.more[i]}` : '';
+    (col.children[2] as HTMLElement).hidden = !layout.notes[i];
     if (civil.day === 1) boundaryCol = i;
   }
 

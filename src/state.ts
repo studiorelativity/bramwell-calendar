@@ -16,6 +16,7 @@ import type {
   RecurrenceScope,
   DayOffset,
   EventCache,
+  MinuteOfDay,
   MonthCacheEntry,
   MonthKey,
   MonthLoadState,
@@ -167,6 +168,7 @@ function loadCache(): void {
 }
 
 function persist(): void {
+  if (demo) return; // demo months are in-memory only, never written back
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
   } catch {
@@ -210,6 +212,7 @@ export function eventsForWeek(week: WeekIndex): CalendarEvent[] {
 /** Fetch any month in range that is absent; background-refresh stale ones. */
 export function ensureMonthsFor(range: WeekRange): void {
   ensureAnchored();
+  if (demo) return; // no network in demo; unseeded months simply stay absent
   const first = dayAt((range.first - PREFETCH_WEEKS) as WeekIndex, 0);
   const last = dayAt((range.last + PREFETCH_WEEKS) as WeekIndex, 6);
   for (const key of monthKeysBetween(first, last)) {
@@ -294,6 +297,7 @@ function monthsOf(event: CalendarEvent): MonthKey[] {
 
 export function createEvent(draft: EventDraft): Promise<CalendarEvent> {
   ensureAnchored();
+  if (demo) return Promise.reject(new DemoError());
   tempSeq += 1;
   const optimistic: CalendarEvent = {
     id: `tmp_${tempSeq}`,
@@ -304,6 +308,9 @@ export function createEvent(draft: EventDraft): Promise<CalendarEvent> {
   };
   if (draft.notes) optimistic.notes = draft.notes;
   if (draft.recurrence) optimistic.recurrence = draft.recurrence;
+  // Without this the optimistic copy is not yet flagged, so it would paint as
+  // a bar for one frame before the server's answer replaced it.
+  if (draft.isDayNote) optimistic.isDayNote = true;
 
   const rollback = applyOptimistic(optimistic);
   return (async () => {
@@ -327,6 +334,7 @@ export function updateEvent(
   scope: RecurrenceScope,
 ): Promise<CalendarEvent> {
   ensureAnchored();
+  if (demo) return Promise.reject(new DemoError());
   const optimistic: CalendarEvent = {
     ...event,
     ...(changes.title !== undefined ? { title: changes.title } : {}),
@@ -358,6 +366,7 @@ export function updateEvent(
 
 export function deleteEvent(event: CalendarEvent, scope: RecurrenceScope): Promise<void> {
   ensureAnchored();
+  if (demo) return Promise.reject(new DemoError());
   const touched = monthsOf(event);
   const rollback = applyOptimistic({ ...event, pending: 'delete' });
   return (async () => {
@@ -377,6 +386,169 @@ export function markAllStale(): void {
   for (const entry of Object.values(cache.months)) entry.fetchedAt = 0;
 }
 
+// ---------------------------------------------------------------------------
+// Demo mode — STAGE 06
+// ---------------------------------------------------------------------------
+// A deterministic in-memory seed so anyone can feel the product without
+// auth. The seed lives here because the cache is this module's property;
+// nothing else may fabricate cache entries. The render pipeline cannot tell
+// demo from real data — that is the point.
+
+let demo = false;
+
+export class DemoError extends Error {
+  constructor() {
+    super('Demo — connect your Google Calendar to save.');
+    this.name = 'DemoError';
+  }
+}
+
+export function isDemo(): boolean {
+  return demo;
+}
+
+/** mulberry32: tiny seeded PRNG so every visitor sees the same calendar. */
+function rng(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function seedDemoEvents(): CalendarEvent[] {
+  const rand = rng(0xb4a17);
+  const t = today();
+  let seq = 0;
+  const out: CalendarEvent[] = [];
+
+  const note = (day: number, text: string): void => {
+    seq += 1;
+    out.push({
+      id: `demo-note-${seq}`,
+      title: text.split('\n', 1)[0],
+      notes: text,
+      category: 'other',
+      span: { kind: 'allDay', start: day as DayNumber, end: day as DayNumber },
+      isDayNote: true,
+    });
+  };
+
+  const allDay = (title: string, category: CalendarEvent['category'], start: number, days = 1): void => {
+    seq += 1;
+    out.push({
+      id: `demo-${seq}`,
+      title,
+      category,
+      span: { kind: 'allDay', start: start as DayNumber, end: (start + days - 1) as DayNumber },
+    });
+  };
+  const timed = (
+    title: string,
+    category: CalendarEvent['category'],
+    day: number,
+    startMinute: number,
+    endMinute: number,
+    seriesId?: string,
+  ): void => {
+    seq += 1;
+    const event: CalendarEvent = {
+      id: `demo-${seq}`,
+      title,
+      category,
+      span: {
+        kind: 'timed',
+        start: day as DayNumber,
+        end: day as DayNumber,
+        startMinute: startMinute as MinuteOfDay,
+        endMinute: endMinute as MinuteOfDay,
+      },
+    };
+    if (seriesId) event.recurringEventId = seriesId;
+    out.push(event);
+  };
+
+  // A 3-week span crossing three week rows — the wrapping-bar showpiece.
+  allDay('Product launch runway', 'work', t - 16, 21);
+
+  // Recurring weekly texture across the whole range (~±8 months).
+  const first = t - 245;
+  const last = t + 245;
+  for (let day = first; day <= last; day++) {
+    const dow = ((((day + 3) % 7) + 7) % 7); // 0=Mon..6=Sun
+    if (dow === 1) timed('Standup', 'work', day, 570, 585, 'demo-standup');
+    if ((dow === 0 || dow === 3) && rand() < 0.7) timed('Gym', 'personal', day, 1080, 1140);
+    if (dow === 4 && rand() < 0.35) timed('Dinner with friends', 'personal', day, 1140, 1260);
+  }
+
+  // Monthly financial rhythm + occasional one-offs.
+  for (const key of monthKeysBetween(first as DayNumber, last as DayNumber)) {
+    const [y, m] = key.split('-').map(Number) as [number, number];
+    allDay('Invoices due', 'financial', dayFromCivil(y, m, 1));
+    if (m % 3 === 1) allDay('Quarterly estimate', 'financial', dayFromCivil(y, m, 15));
+    const oneOff = first + Math.floor(rand() * (last - first));
+    if (rand() < 0.5) allDay('Server migration', 'other', oneOff);
+  }
+
+  // Weekend trips every ~6 weeks, Saturday–Sunday.
+  for (let day = first; day <= last; day += 42) {
+    const sat = day + ((5 - ((((day + 3) % 7) + 7) % 7) + 7) % 7);
+    allDay('Cabin weekend', 'personal', sat, 2);
+  }
+
+  // One deliberately dense day near today: overflows the year cell's 3 bars
+  // and gives the drawer a real list.
+  timed('1:1 with Alex', 'work', t + 3, 660, 690);
+  timed('Dentist', 'personal', t + 3, 840, 900);
+  allDay('Flat viewing', 'other', t + 3);
+
+  // Two day notes (STAGE 07). One on the dense day, so the demo shows the
+  // Notes panel sitting above a real event list; one on a bare day, so the
+  // cell marker is visible without anything else competing for the cell.
+  note(t + 3, 'Ask Alex about the Q4 handover.\nBring the printed timeline.');
+  note(t - 2, 'Slow morning. Walked the long way.');
+
+  return out;
+}
+
+/**
+ * Enter demo: seed the in-memory cache and mark those months ready. The
+ * real localStorage cache is untouched (persist() no-ops while in demo).
+ */
+export function enterDemo(): void {
+  ensureAnchored();
+  demo = true;
+  const events = seedDemoEvents();
+  const byMonth: Record<string, CalendarEvent[]> = {};
+  for (const event of events) {
+    for (const key of monthKeysBetween(event.span.start, event.span.end)) {
+      (byMonth[key] ??= []).push(event);
+    }
+  }
+  cache = { version: CACHE_VERSION, months: {} };
+  for (const k of Object.keys(loadState)) delete loadState[k];
+  const keys = Object.keys(byMonth) as MonthKey[];
+  for (const key of keys) {
+    cache.months[key] = { key, events: byMonth[key] ?? [], fetchedAt: Date.now() };
+    loadState[key] = 'ready';
+  }
+  notify(keys);
+}
+
+/** Exit demo: drop the seed, reload the real cache from localStorage. */
+export function exitDemo(): void {
+  if (!demo) return;
+  demo = false;
+  const dropped = Object.keys(cache.months) as MonthKey[];
+  cache = { version: CACHE_VERSION, months: {} };
+  for (const k of Object.keys(loadState)) delete loadState[k];
+  loadCache();
+  notify([...new Set([...dropped, ...(Object.keys(cache.months) as MonthKey[])])]);
+}
+
 /** Events on a single day, cache-only — what the day drawer lists. */
 export function eventsOnDay(day: DayNumber): CalendarEvent[] {
   return eventsForWeek(weekOf(day))
@@ -387,6 +559,63 @@ export function eventsOnDay(day: DayNumber): CalendarEvent[] {
       if (at !== bt) return at - bt;
       return a.title < b.title ? -1 : 1;
     });
+}
+
+// ---------------------------------------------------------------------------
+// Day notes — STAGE 07
+// ---------------------------------------------------------------------------
+// This module owns upsert semantics; gcal.ts owns the wire format; the drawer
+// owns neither and calls saveNote(). Notes ride the same optimistic write
+// paths as events, so offline failure, rollback and the demo guard are
+// inherited rather than reimplemented.
+
+/**
+ * The day's note, cache-only — the read twin of eventsOnDay().
+ *
+ * A calendar may hold more than one daynote on a day (hand-created, or a
+ * write that raced). The earliest id wins and the extras are ignored: they
+ * stay in Google Calendar untouched, because this app never deletes data it
+ * did not just write.
+ */
+export function noteForDay(day: DayNumber): CalendarEvent | undefined {
+  let best: CalendarEvent | undefined;
+  for (const event of eventsForWeek(weekOf(day))) {
+    if (!event.isDayNote) continue;
+    if (event.span.start > day || event.span.end < day) continue;
+    if (!best || event.id < best.id) best = event;
+  }
+  return best;
+}
+
+/**
+ * Upsert the day's note: create when absent, patch when present, delete when
+ * the text is empty. Rejects with OfflineError / DemoError exactly as an
+ * event write does, and rolls back the same way.
+ */
+export function saveNote(day: DayNumber, text: string): Promise<void> {
+  ensureAnchored();
+  const trimmed = text.trim();
+  const existing = noteForDay(day);
+
+  if (!existing) {
+    // Empty text with no note is not a write at all — nothing to create,
+    // nothing to reject. Everything else routes through a guarded path.
+    if (!trimmed) return Promise.resolve();
+    return createEvent({
+      title: trimmed,
+      notes: trimmed,
+      category: 'other',
+      span: { kind: 'allDay', start: day, end: day },
+      isDayNote: true,
+    }).then(() => undefined);
+  }
+
+  if (!trimmed) return deleteEvent(existing, 'instance');
+
+  // Always an instance write: a note is single-day and never recurring.
+  return updateEvent(existing, { title: trimmed, notes: trimmed, isDayNote: true }, 'instance').then(
+    () => undefined,
+  );
 }
 
 // ---------------------------------------------------------------------------

@@ -2,7 +2,7 @@
 // first-run screen, settings sheet, FAB, avatar/connection state.
 
 import './style.css';
-import { isSignedIn } from './auth.ts';
+import { isSignedIn, signIn } from './auth.ts';
 import { initChrome, setAuthState } from './chrome.ts';
 import {
   closeDrawer,
@@ -30,6 +30,9 @@ import {
   dayAt,
   dayFromCivil,
   ensureMonthsFor,
+  enterDemo,
+  exitDemo,
+  isDemo,
   markAllStale,
   monthOf,
   monthState,
@@ -162,7 +165,21 @@ function boot(): void {
     onSnapChange: (days: SnapStep) => setSnapStep(days),
     onViewChange: (next) => setView(next),
     onAdd: addOnCenteredDay,
+    // Demo (stage 06). enterDemo's notify() drives the repaint through the
+    // onCacheChange handler above; no direct render calls needed.
+    onDemo: () => {
+      enterDemo();
+      paintAuth();
+    },
+    onDemoExit: () => {
+      exitDemo();
+      signIn();
+      paintAuth();
+    },
   });
+
+  // Shareable entry: ?demo drops straight into the seeded calendar.
+  if (new URLSearchParams(location.search).has('demo')) enterDemo();
 
   // Desktop shortcut. Ignore it while typing or while the drawer is open —
   // 'n' in an event title must stay a letter.
@@ -225,11 +242,15 @@ function boot(): void {
   let wasSignedIn = isSignedIn();
   const paintAuth = (): void => {
     const now = isSignedIn();
+    // Signing in while in demo (via the pill, or Connect anywhere) ends the
+    // demo: the seed drops, the real cache reloads, real months fetch below.
+    if (now && isDemo()) exitDemo();
+    const demoNow = isDemo();
     const warm = warmCache();
     // Cold start (no cache) shows first-run immediately; only the stale-auth
     // pill over a warm cache waits out the quiet-renewal grace.
-    const settled = now || !warm || Date.now() - bootedAt > AUTH_GRACE_MS;
-    if (settled) setAuthState(now, warm);
+    const settled = demoNow || now || !warm || Date.now() - bootedAt > AUTH_GRACE_MS;
+    if (settled) setAuthState(now, warm, demoNow);
     if (now && !wasSignedIn) ensureMonthsFor(renderWindow());
     wasSignedIn = now;
   };

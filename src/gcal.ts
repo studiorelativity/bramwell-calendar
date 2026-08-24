@@ -21,6 +21,20 @@ const MAX_RESULTS = 250;
 const RETRY_DELAY_MS = 800;
 const MS_PER_DAY = 86_400_000;
 
+// -- day notes (STAGE 07) ----------------------------------------------------
+// This file is the ONLY place the extended-property string exists. state.ts
+// knows upsert semantics, the drawer knows neither; both speak `isDayNote`.
+const DAYNOTE_PROP = 'bramwell';
+const DAYNOTE_VALUE = 'daynote';
+/** Google truncates long summaries in its own UI; keep the title readable. */
+const DAYNOTE_SUMMARY_MAX = 60;
+
+/** Title shown in the Google Calendar apps: first line, clipped. */
+function firstLine(text: string): string {
+  const line = text.split('\n', 1)[0].trim();
+  return line.length > DAYNOTE_SUMMARY_MAX ? line.slice(0, DAYNOTE_SUMMARY_MAX) : line;
+}
+
 // -- wire shapes -------------------------------------------------------------
 
 interface WireDate {
@@ -39,6 +53,7 @@ interface WireEvent {
   status?: string;
   start?: WireDate;
   end?: WireDate;
+  extendedProperties?: { private?: Record<string, string> };
 }
 
 interface WireList {
@@ -168,6 +183,7 @@ function normalize(w: WireEvent): CalendarEvent | null {
   if (w.recurringEventId) event.recurringEventId = w.recurringEventId;
   if (w.description) event.notes = w.description;
   if (w.recurrence?.length) event.recurrence = w.recurrence;
+  if (w.extendedProperties?.private?.[DAYNOTE_PROP] === DAYNOTE_VALUE) event.isDayNote = true;
   return event;
 }
 
@@ -176,6 +192,19 @@ function payload(draft: Partial<EventDraft>): Record<string, unknown> {
   if (draft.title !== undefined) body.summary = draft.title;
   if (draft.notes !== undefined) body.description = draft.notes;
   if (draft.category !== undefined) body.colorId = colorIdFor(draft.category);
+
+  if (draft.isDayNote) {
+    // The note's own shape overrides whatever the generic mapping produced:
+    // full text in description, first line as the title, always `other`.
+    // Re-sent on PATCH as well as POST, so a note whose property was lost
+    // (hand-edited in the Google apps) is repaired by the next save.
+    const text = draft.notes ?? draft.title ?? '';
+    body.summary = firstLine(text);
+    body.description = text;
+    body.colorId = colorIdFor('other');
+    body.extendedProperties = { private: { [DAYNOTE_PROP]: DAYNOTE_VALUE } };
+  }
+
   if (draft.recurrence !== undefined) body.recurrence = draft.recurrence;
   if (draft.span) {
     const span = draft.span;
