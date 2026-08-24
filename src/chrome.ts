@@ -80,11 +80,20 @@ function buildFirstRun(): HTMLElement {
       <h1 class="fr-name">Bramwell</h1>
       <p class="fr-blurb">A perpetual calendar for your Google Calendar.
         Weeks stack forever &mdash; months are labels, not walls.</p>
+      <ul class="fr-what">
+        <li>Weeks run top to bottom, without a break &mdash; scroll from this
+          week into next month without turning a page.</li>
+        <li>Zoom out to the whole year, back in to a single week.</li>
+        <li>Tap a day to add an event, change one, or leave yourself a note.</li>
+      </ul>
+      <p class="fr-blurb fr-plain">Nothing fancy. A calendar that works the way you do.</p>
       <button class="fr-connect" type="button">
         <span class="fr-g">G</span>Connect Google Calendar
       </button>
       <p class="fr-fine">Your events stay in Google Calendar. Nothing is stored anywhere else.</p>
       <button class="fr-demo" type="button">Try the demo</button>
+      <p class="fr-contact">Questions or trouble &mdash;
+        <a href="mailto:hello@no.fail">hello@no.fail</a></p>
     </div>`;
   screen.querySelector('.fr-connect')?.addEventListener('click', () => signIn());
   screen.querySelector('.fr-demo')?.addEventListener('click', () => callbacks?.onDemo());

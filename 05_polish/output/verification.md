@@ -101,3 +101,36 @@ Phone + desktop, light + dark:
    a 3-week all-day event ends on the chosen day, not a day later.
 9. Existing PWA install: after deploy, one online open then offline open —
    the new shell (new header, new colors) shows, not the old cached one.
+
+## Amendment — 2026-08-24 · first-run copy
+
+Content-only change to the first-run screen, requested directly (not from a
+gate failure). Both additions are in `chrome.ts`'s `buildFirstRun()` with
+styles alongside the other `.fr-` rules in `style.css`; `auth.ts` is
+untouched, per the module boundary — it stays auth logic only.
+
+1. **What to expect, before signing in.** The screen previously named the
+   product and asked for consent without saying what the user was consenting
+   to see. Added a three-line `.fr-what` list — continuous vertical weeks,
+   zoom from year to week, tap a day to add/edit/note — plus a closing line,
+   "Nothing fancy. A calendar that works the way you do." Plain text, no
+   bullets or icons: the "less chrome" rule applies to this screen too, and
+   the em-dash tick before each line is 5×1px of `--ink-faint`.
+2. **Developer contact.** `.fr-contact` renders "Questions or trouble —
+   hello@no.fail" as a `mailto:` link at the bottom of the card, below the
+   demo link. Deliberately the lowest-emphasis element on the screen
+   (11.5px, `--ink-faint`, underline only), matching `.fr-fine` — it is a
+   support line, not a second CTA.
+
+Evidence: `npm run build` clean (`tsc` + vite, 16 modules); `hello@no.fail`
+and both new rules present in `dist/assets/main-*.{js,css}`.
+
+3. **Overflow made safe** (caused by the above). The taller card can exceed
+   a short phone viewport, and `.firstrun`'s `place-items: center` would have
+   clipped the top with no way to scroll back to it. Now `place-items: safe
+   center` + `overflow-y: auto`: centred when it fits, start-aligned and
+   scrollable when it doesn't.
+
+Not self-certifiable, folds into the open human gate: on the shortest phone
+in use, landscape included, the Connect button must still be reachable —
+either above the fold or by scrolling the first-run screen.
