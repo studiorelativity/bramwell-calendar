@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Bramwell mark. Matches the app's .fr-mark: warm graphite (--ink),
+       off-white B (--surface), 18/56 corner ratio. Text renders in the
+       viewer's system stack, same as the app itself. -->
+  <rect width="1024" height="1024" rx="329" fill="#1c1917"/>
+  <text x="512" y="512" dy="0.36em" text-anchor="middle"
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+        font-size="640" font-weight="700" fill="#faf9f7">B</text>
+</svg>
