@@ -1,6 +1,9 @@
 /* STAGE 03 — app stylesheet. Colour tokens live in index.html (defined once,
    per conventions.md); this file is structure and motion only.
-   Revised 2026-08-20: uniform rows, no lens. */
+   Revised 2026-08-20: uniform rows, no lens.
+   Revised 2026-08-23 (stage 05): visual pass per 05_polish/mock.html —
+   tinted bars, hairlines, hover wash, today ring, chrome (first-run,
+   settings, FAB). */
 
 /* --- shell ---------------------------------------------------------------- */
 
@@ -42,8 +45,8 @@ body {
   position: relative;
   flex: 1;
   height: 1.35em;
-  font-size: 17px;
-  font-weight: 600;
+  font-size: 21px;
+  font-weight: 700;
   letter-spacing: -0.01em;
 }
 
@@ -83,14 +86,13 @@ body {
    Re-assert it or the header controls never actually hide. */
 #calendar[hidden],
 #year[hidden],
-.steps[hidden],
 .views[hidden],
 .yearnav[hidden],
 .dow[hidden] {
   display: none;
 }
 
-.steps,
+/* (.steps removed at stage 05 — the 15/30/45 selector lives in Settings.) */
 .views {
   display: flex;
   border: 1px solid var(--rule);
@@ -99,7 +101,6 @@ body {
   pointer-events: auto;
 }
 
-.step,
 .view {
   border: 0;
   background: transparent;
@@ -110,12 +111,10 @@ body {
   cursor: pointer;
 }
 
-.step + .step,
 .view + .view {
   border-left: 1px solid var(--rule);
 }
 
-.step[aria-pressed='true'],
 .view[aria-pressed='true'] {
   background: var(--ink);
   color: var(--surface);
@@ -164,6 +163,9 @@ body {
   inset: 0;
   display: grid;
   grid-template-columns: repeat(7, 1fr);
+  /* Hairline between week rows (stage 05): rows are transform-placed and
+     adjacent, so an inset top shadow reads as the row separator. */
+  box-shadow: inset 0 1px 0 var(--rule);
 }
 
 /* Alternating month band, per column, with the weekend shade layered over it.
@@ -189,24 +191,39 @@ body {
   box-shadow: inset 1px 0 0 var(--rule);
 }
 
+/* Desktop hover wash (stage 05). An ::after overlay rather than a background
+   swap, so the band tokens stay untouched and touch devices never see it. */
+@media (hover: hover) {
+  .col:hover::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--hover);
+    pointer-events: none;
+  }
+}
+
 /* Top-RIGHT. The inline month label owns the top-left, so on the 1st of a
    month the two sit side by side instead of on top of each other. */
 .dnum {
   position: absolute;
   top: 2px;
-  right: 3px;
-  font-size: 11px;
-  line-height: 16px;
-  min-width: 16px;
+  right: 4px;
+  font-size: 12px;
+  line-height: 18px;
+  min-width: 18px;
   text-align: center;
   color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
 }
 
+/* Today ring: a filled circle, findable in under a second (spec). */
 .col[data-today='1'] .dnum {
   color: var(--surface);
   background: var(--ink);
   border-radius: 999px;
-  font-weight: 600;
+  font-weight: 700;
+  height: 18px;
 }
 
 .more {
@@ -258,24 +275,42 @@ body {
   pointer-events: none;
 }
 
+/* Tinted bars (stage 05): category colour at 16% as fill, full colour for
+   the text and a 3px left spine. Reads as modern without the shout of a
+   solid block; the spine keeps the category legible at a glance. */
 .bar {
   position: absolute;
   left: calc(var(--c0) / 7 * 100% + 2px);
   width: calc(var(--cs) / 7 * 100% - 4px);
   top: calc(var(--lane) * var(--lane-h));
   height: calc(var(--lane-h) - 3px);
-  background: var(--cat);
-  border-radius: 3px;
+  background: color-mix(in srgb, var(--cat) 16%, transparent);
+  border-radius: 5px;
   display: flex;
   align-items: center;
   overflow: hidden;
 }
 
-/* Square the end that continues into the previous/next week row. */
+.bar::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--cat);
+}
+
+/* Square the end that continues into the previous/next week row; a
+   continuation also drops the spine — the true start carries it once. */
 .bar[data-l='1'] {
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
   left: calc(var(--c0) / 7 * 100%);
+}
+
+.bar[data-l='1']::before {
+  display: none;
 }
 
 .bar[data-r='1'] {
@@ -293,10 +328,11 @@ body {
 }
 
 .btitle {
-  padding: 0 6px;
+  padding: 0 6px 0 9px;
   font-size: 11px;
   line-height: 1;
-  color: #fff;
+  font-weight: 600;
+  color: var(--cat);
   white-space: nowrap;
 }
 
@@ -327,11 +363,13 @@ body {
   overflow: hidden;
 }
 
+/* Category dot (stage 05, was a 3px bar — the dot + muted time + title is
+   the treatment the mock fixed). */
 .chip::before {
   content: '';
-  width: 3px;
-  height: 10px;
-  border-radius: 2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
   background: var(--cat);
   flex: none;
 }
@@ -417,14 +455,19 @@ pre.selftest {
   cursor: default;
 }
 
+/* Hover wash (stage 05, was a category-blue outline — neutral now, so the
+   commitments stay the only strong colour on screen). */
 .ycell:not(.blank):hover {
-  outline: 1px solid var(--cat-work);
-  outline-offset: -1px;
+  box-shadow: inset 0 0 0 999px var(--hover);
 }
 
 /* A month starts here: rule down the leading edge, matching the main view. */
 .ycell[data-first='1'] {
-  box-shadow: inset 2px 0 0 var(--ink-muted);
+  box-shadow: inset 2px 0 0 var(--rule-strong);
+}
+
+.ycell[data-first='1']:not(.blank):hover {
+  box-shadow: inset 2px 0 0 var(--rule-strong), inset 0 0 0 999px var(--hover);
 }
 
 .ydow {
@@ -457,9 +500,10 @@ pre.selftest {
   margin-top: 2px;
 }
 
+/* Full colour, not tinted: a tint does not read at 4px (spec, Year view). */
 .ybars i {
   display: block;
-  height: 3px;
+  height: 4px;
   border-radius: 2px;
   background: var(--cat);
 }
@@ -470,15 +514,15 @@ pre.selftest {
 .ypop {
   position: fixed;
   z-index: 20;
-  width: 232px;
+  width: 248px;
   max-width: calc(100vw - 16px);
   padding: 3px;
-  background: var(--surface);
-  border: 1px solid var(--rule);
-  border-radius: 9px;
-  box-shadow: 0 14px 34px -12px rgba(0, 0, 0, 0.5);
-  font-size: 11px;
-  line-height: 1.35;
+  background: var(--band-a);
+  border: 1px solid var(--rule-strong);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+  font-size: 12px;
+  line-height: 1.4;
   /* Never intercept the pointer, or hovering the next cell would be blocked. */
   pointer-events: none;
 }
@@ -521,11 +565,12 @@ pre.selftest {
   color: var(--ink);
 }
 
+/* Category dot, matching the calendar's chips (stage 05). */
 .ypev::before {
   content: '';
-  width: 3px;
-  height: 11px;
-  border-radius: 2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
   background: var(--cat);
   flex: none;
 }
@@ -844,6 +889,276 @@ pre.selftest {
 .btn:disabled {
   opacity: 0.55;
   cursor: default;
+}
+
+/* --- chrome (stage 05): avatar, reconnect, FAB, first-run, settings ------- */
+
+.avatar {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  background: var(--band-b);
+  color: var(--ink-muted);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+  flex: none;
+}
+
+.avatar[hidden] {
+  display: none;
+}
+
+.avatar .dot {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--ink-faint);
+  border: 2px solid var(--surface);
+}
+
+.avatar.is-on .dot {
+  background: #22c55e;
+}
+
+.reconnect {
+  color: var(--cat-financial);
+  border-color: var(--cat-financial);
+}
+
+.reconnect[hidden] {
+  display: none;
+}
+
+.fab {
+  position: fixed;
+  right: calc(16px + env(safe-area-inset-right, 0px));
+  bottom: calc(16px + var(--safe-bottom));
+  z-index: 25;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--ink);
+  color: var(--surface);
+  font-size: 26px;
+  font-weight: 400;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+}
+
+.fab[hidden] {
+  display: none;
+}
+
+.firstrun {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--surface);
+  text-align: center;
+}
+
+.firstrun[hidden] {
+  display: none;
+}
+
+.fr-mark {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  background: var(--ink);
+  color: var(--surface);
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  font-weight: 700;
+  margin: 0 auto 18px;
+}
+
+.fr-name {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0 0 8px;
+}
+
+.fr-blurb {
+  color: var(--ink-muted);
+  font-size: 14px;
+  margin: 0 auto 24px;
+  max-width: 34ch;
+}
+
+.fr-connect {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  cursor: pointer;
+  padding: 10px 18px;
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--surface);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.fr-g {
+  background: #fff;
+  border-radius: 999px;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #4285f4;
+}
+
+.fr-fine {
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  margin-top: 14px;
+}
+
+.sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  background: rgba(0, 0, 0, 0.38);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.sheet-overlay[hidden] {
+  display: none;
+}
+
+.sheet {
+  width: min(380px, 100%);
+  border: 1px solid var(--rule-strong);
+  border-radius: 14px;
+  background: var(--band-a);
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22);
+}
+
+/* On a phone the sheet docks to the bottom, thumb-reachable, like the drawer. */
+@media (max-width: 560px) {
+  .sheet-overlay {
+    place-items: end center;
+    padding: 0;
+  }
+
+  .sheet {
+    width: 100%;
+    border-radius: 15px 15px 0 0;
+    border-bottom: 0;
+    padding-bottom: var(--safe-bottom);
+  }
+}
+
+.sheet-head {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px 10px;
+  font-size: 15px;
+  font-weight: 700;
+  border-bottom: 1px solid var(--rule);
+}
+
+.sheet-head span {
+  flex: 1;
+}
+
+.sheet-x {
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.sheet-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  font-size: 13.5px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.sheet-row:last-child {
+  border-bottom: none;
+}
+
+.sheet-lab {
+  flex: 1;
+}
+
+.sheet-sub {
+  display: block;
+  font-size: 11.5px;
+  color: var(--ink-muted);
+  margin-top: 2px;
+}
+
+.sheet-auth {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.sheet-auth.danger {
+  color: #dc2626;
+}
+
+.seg {
+  display: flex;
+  border: 1px solid var(--rule-strong);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.segopt {
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 12.5px;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+
+.segopt + .segopt {
+  border-left: 1px solid var(--rule);
+}
+
+.segopt[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--surface);
+  font-weight: 600;
 }
 
 /* --- toast + offline ------------------------------------------------------- */

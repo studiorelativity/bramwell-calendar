@@ -15,7 +15,12 @@ declare global {
 // Minimal shape of the GIS global we actually use. Declared here rather than
 // pulled from @types so that auth knowledge stays inside this file.
 interface GoogleNamespace {
-  accounts: { oauth2: { initTokenClient(config: TokenClientConfig): TokenClient } };
+  accounts: {
+    oauth2: {
+      initTokenClient(config: TokenClientConfig): TokenClient;
+      revoke(token: string, done?: () => void): void;
+    };
+  };
 }
 
 interface TokenClientConfig {
@@ -146,4 +151,15 @@ export function signIn(): void {
 /** True when a non-expired token is held in memory. */
 export function isSignedIn(): boolean {
   return valid();
+}
+
+/**
+ * STAGE 05 — Settings' sign-out (added to the spec's export list 2026-08-23).
+ * Revokes the grant with Google, not just locally: sign-out that leaves the
+ * grant standing would quiet-renew straight back in on the next getToken().
+ */
+export function signOut(): void {
+  const held = token;
+  clear();
+  if (held) window.google?.accounts?.oauth2?.revoke(held);
 }

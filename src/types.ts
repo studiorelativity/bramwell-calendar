@@ -151,4 +151,10 @@ export interface Prefs {
    * written before the selector existed still type-checks.
    */
   snapStepDays?: 15 | 30 | 45;
+  /**
+   * Which view opens on launch. Optional for the same reason as
+   * snapStepDays: code written before Settings existed still type-checks.
+   * (Stage 05.)
+   */
+  defaultView?: 'calendar' | 'year';
 }

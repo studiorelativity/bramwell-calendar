@@ -18,24 +18,28 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <title>Bramwell Calendar</title>
     <style>
-      /* The four category colors, defined once (conventions.md). */
+      /* The four category colors, defined once (conventions.md).
+         Values revised at stage 05 per the approved 05_polish/mock.html. */
       :root {
         --cat-work: #3056d3;
         --cat-personal: #17925a;
         --cat-financial: #d97706;
         --cat-other: #64748b;
 
-        --surface: #ffffff;
+        --surface: #faf9f7;
 
         /* Alternating month bands, per day column. Weekend variants layer the
            weekend shade over each band so both stay readable. */
-        --band-a: #ffffff;
-        --band-b: #f5f4f1;
-        --band-a-we: #efeeea;
-        --band-b-we: #e7e5e0;
+        --band-a: #faf9f7;
+        --band-b: #f0eeea;
+        --band-a-we: #f2f0ec;
+        --band-b-we: #e8e5df;
         --ink: #1c1917;
-        --ink-muted: #78716c;
-        --rule: #e7e5e4;
+        --ink-muted: #8a837c;
+        --ink-faint: #b3ada6;
+        --rule: #e5e2dc;
+        --rule-strong: #d6d2ca;
+        --hover: rgba(28, 25, 23, 0.045);
 
         --safe-top: env(safe-area-inset-top, 0px);
         --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -45,14 +49,26 @@
 
       @media (prefers-color-scheme: dark) {
         :root {
-          --surface: #0c0a09;
-          --band-a: #0c0a09;
-          --band-b: #1b1714;
-          --band-a-we: #191512;
-          --band-b-we: #2a251f;
-          --ink: #fafaf9;
-          --ink-muted: #a8a29e;
-          --rule: #292524;
+          /* Lifted warm graphite, never near black: the band contrast must
+             survive a phone at arm's length (spec, Visual direction). */
+          --surface: #151210;
+          --band-a: #151210;
+          --band-b: #211d18;
+          --band-a-we: #1c1815;
+          --band-b-we: #29241e;
+          --ink: #f3f1ee;
+          --ink-muted: #a49d94;
+          --ink-faint: #6e685f;
+          --rule: #2e2924;
+          --rule-strong: #3a342c;
+          --hover: rgba(243, 241, 238, 0.05);
+
+          /* Brightened category variants: the light-mode hues fail contrast
+             on tinted dark fills. */
+          --cat-work: #7b96ff;
+          --cat-personal: #4fc48d;
+          --cat-financial: #f0a13c;
+          --cat-other: #94a3b8;
         }
       }
 
@@ -84,14 +100,18 @@
           <button class="view" type="button" data-view="calendar" aria-pressed="true">Cal</button>
           <button class="view" type="button" data-view="year" aria-pressed="false">Year</button>
         </div>
-        <div class="steps" role="group" aria-label="Scroll step in days">
-          <button class="step" type="button" data-step="15" aria-pressed="false">15</button>
-          <button class="step" type="button" data-step="30" aria-pressed="true">30</button>
-          <button class="step" type="button" data-step="45" aria-pressed="false">45</button>
-        </div>
+        <!-- Stage 05: the 15/30/45 selector moved into Settings; the sign-in
+             button was replaced by the first-run screen + this reconnect pill
+             (shown only when auth is stale over a warm cache). -->
         <button id="today-btn" class="hbtn" type="button">Today</button>
         <span id="offline-pill" class="hbtn offline" hidden>Offline</span>
-        <button id="signin-btn" class="hbtn" type="button" hidden>Sign in</button>
+        <button id="reconnect-pill" class="hbtn reconnect" type="button" hidden>Reconnect</button>
+        <button id="avatar-btn" class="avatar" type="button" aria-label="Account and settings" hidden>
+          <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="currentColor">
+            <path d="M12 12a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9Zm0 2c-4 0-7.5 2.1-7.5 4.9V21h15v-2.1c0-2.8-3.5-4.9-7.5-4.9Z"/>
+          </svg>
+          <span class="dot" aria-hidden="true"></span>
+        </button>
       </div>
       <div class="dow">
         <span>M</span><span>T</span><span>W</span><span>T</span>

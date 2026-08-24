@@ -26,7 +26,10 @@ interface WorkerScope {
 
 declare const self: WorkerScope;
 
-const CACHE = 'bramwell-shell-v2';
+// v3 (stage 05): index.html's tokens and header changed, and the shell is
+// served cache-first — only a byte-change in this file makes an existing
+// install re-fire install and re-prime. Bump this on EVERY shell change.
+const CACHE = 'bramwell-shell-v3';
 /**
  * Only paths the build actually emits at these URLs. The manifest, JS and CSS
  * are content-hashed into /assets/ and cannot be named here; they are picked

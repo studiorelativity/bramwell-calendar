@@ -1,8 +1,16 @@
-// STAGE 01/02/03 — bootstrapping and wiring.
+// STAGE 01/02/03 — bootstrapping and wiring. Stage 05 added the chrome:
+// first-run screen, settings sheet, FAB, avatar/connection state.
 
 import './style.css';
-import { isSignedIn, signIn } from './auth.ts';
-import { closeDrawer, isOpen as drawerOpen, openDay, refresh as refreshDrawer } from './drawer.ts';
+import { isSignedIn } from './auth.ts';
+import { initChrome, setAuthState } from './chrome.ts';
+import {
+  closeDrawer,
+  isOpen as drawerOpen,
+  openAdd,
+  openDay,
+  refresh as refreshDrawer,
+} from './drawer.ts';
 import { invalidateWeeks, mountedWeeks, setHeaderLabel } from './render.ts';
 import {
   initScroll,
@@ -23,10 +31,13 @@ import {
   dayFromCivil,
   ensureMonthsFor,
   markAllStale,
+  monthOf,
+  monthState,
   onCacheChange,
   prefs,
   savePrefs,
   selfTest,
+  today,
   weekOf,
 } from './state.ts';
 import { currentYear, initYear, onYearDayClick, renderYear } from './year.ts';
@@ -69,7 +80,6 @@ function boot(): void {
 
   let view: 'calendar' | 'year' = 'calendar';
   const dowStrip = document.querySelector<HTMLElement>('.dow');
-  const stepsGroup = document.querySelector<HTMLElement>('.steps');
   const yearNav = document.querySelector<HTMLElement>('.yearnav');
   const viewButtons = [...document.querySelectorAll<HTMLButtonElement>('.view')];
 
@@ -89,7 +99,6 @@ function boot(): void {
     calendar.hidden = isYear;
     yearHost.hidden = !isYear;
     if (dowStrip) dowStrip.hidden = isYear;
-    if (stepsGroup) stepsGroup.hidden = isYear;
     if (yearNav) yearNav.hidden = !isYear;
     for (const button of viewButtons) {
       button.setAttribute('aria-pressed', String(button.dataset.view === next));
@@ -138,19 +147,37 @@ function boot(): void {
 
   onDayTap((day) => openDay(day));
 
-  // 15/30/45 snap granularity, persisted.
-  const stepButtons = [...document.querySelectorAll<HTMLButtonElement>('.step')];
-  const applyStep = (days: SnapStep, persist: boolean): void => {
-    setSnapStep(days);
-    for (const button of stepButtons) {
-      button.setAttribute('aria-pressed', String(Number(button.dataset.step) === days));
-    }
-    if (persist) savePrefs({ snapStepDays: days });
+  // --- chrome (stage 05) ----------------------------------------------------
+  // Snap granularity lives in Settings now; persistence happens in chrome.ts.
+  setSnapStep(prefs().snapStepDays ?? 30);
+
+  // The FAB's date: the day nearest the viewport centre in the calendar
+  // (the docked anchor's mid-week day), today in the year view.
+  const addOnCenteredDay = (): void => {
+    const day = view === 'year' ? today() : dayAt(dockedWeek(), 3);
+    openAdd(day);
   };
-  for (const button of stepButtons) {
-    button.addEventListener('click', () => applyStep(Number(button.dataset.step) as SnapStep, true));
-  }
-  applyStep(prefs().snapStepDays ?? 30, false);
+
+  initChrome({
+    onSnapChange: (days: SnapStep) => setSnapStep(days),
+    onViewChange: (next) => setView(next),
+    onAdd: addOnCenteredDay,
+  });
+
+  // Desktop shortcut. Ignore it while typing or while the drawer is open —
+  // 'n' in an event title must stay a letter.
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'n' || e.metaKey || e.ctrlKey || e.altKey) return;
+    const target = e.target as HTMLElement | null;
+    if (target && ('value' in target || target.isContentEditable)) return;
+    if (drawerOpen()) return;
+    addOnCenteredDay();
+  });
+
+  // Launch on the persisted default view (first load still rests on the
+  // boundary nearest today — setView('calendar') is a no-op on the scroller).
+  const startView = prefs().defaultView ?? 'calendar';
+  if (startView !== 'calendar') setView(startView);
 
   // --- offline -------------------------------------------------------------
 
@@ -176,19 +203,38 @@ function boot(): void {
   const todayBtn = document.getElementById('today-btn');
   todayBtn?.addEventListener('click', () => scrollToWeek(0 as WeekIndex, true));
 
-  const signInBtn = document.getElementById('signin-btn');
-  signInBtn?.addEventListener('click', () => signIn());
+  // --- auth-driven shell (stage 05) -----------------------------------------
+  // auth.ts exports no change event by design, so poll it (a second's lag is
+  // invisible). Warm cache = any month in the render window is resident;
+  // that decides first-run screen vs read-only calendar + reconnect pill.
+  const warmCache = (): boolean => {
+    const range = renderWindow();
+    for (let week = range.first; week <= range.last; week++) {
+      if (monthState(monthOf(dayAt(week as WeekIndex, 0))) === 'ready') return true;
+      if (monthState(monthOf(dayAt(week as WeekIndex, 6))) === 'ready') return true;
+    }
+    return false;
+  };
 
-  // auth.ts exports no change event by design, so poll it: the button is the
-  // only thing that depends on sign-in state, and a second's lag is invisible.
+  // Grace period before judging a stale token: the first getToken() call
+  // (fired by ensureMonthsFor above) quiet-renews for a returning user, and
+  // flashing the reconnect pill during that beat would cry wolf.
+  const bootedAt = Date.now();
+  const AUTH_GRACE_MS = 2_500;
+
   let wasSignedIn = isSignedIn();
-  setInterval(() => {
+  const paintAuth = (): void => {
     const now = isSignedIn();
-    if (signInBtn) signInBtn.hidden = now;
+    const warm = warmCache();
+    // Cold start (no cache) shows first-run immediately; only the stale-auth
+    // pill over a warm cache waits out the quiet-renewal grace.
+    const settled = now || !warm || Date.now() - bootedAt > AUTH_GRACE_MS;
+    if (settled) setAuthState(now, warm);
     if (now && !wasSignedIn) ensureMonthsFor(renderWindow());
     wasSignedIn = now;
-  }, 1000);
-  if (signInBtn) signInBtn.hidden = wasSignedIn;
+  };
+  setInterval(paintAuth, 1000);
+  paintAuth();
 }
 
 /**

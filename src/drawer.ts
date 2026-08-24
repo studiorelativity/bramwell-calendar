@@ -499,6 +499,15 @@ export function openDay(day: DayNumber): void {
   paintList();
 }
 
+/**
+ * STAGE 05 — open the drawer directly on the blank add form for a day.
+ * The FAB's path: one tap to a ready-to-type form, no intermediate list.
+ */
+export function openAdd(day: DayNumber): void {
+  openDay(day);
+  openForm(null);
+}
+
 /** Open the edit form for one event; offers instance vs series. */
 export function editEvent(event: CalendarEvent): void {
   if (!open) openDay(event.span.start);

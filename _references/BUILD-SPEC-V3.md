@@ -75,16 +75,31 @@ all 365 days, no scrolling on a desktop window.
 - `<` `>` in the header step the year. Clicking a day returns to the calendar
   view positioned on that day — the year view is an overview and a navigator.
 
+*(Appended 2026-08-23, stage 05.)* The year view shares the calendar's
+visual system: alternating month bands with the weekend shade, 1px
+hairlines between cells, a 2px strong rule on each month's leading edge,
+the month badge pill, and the today ring scaled to cell size. Per-day event
+bars stay full-color (tinting does not read at 4px). The hover/tap panel is
+a card in the same tokens: three day rows, hovered day emphasized on a band
+surface, events with category dots and meridiem times. The add button is
+present here too, pre-filled with today.
+
 ## Layout details
 
 - 7 equal columns. Weekend columns (Sat/Sun) get a subtle background shade,
   layered over the month band so both remain readable.
 - Each month gets an alternating neutral background band, applied per day
   column. A week straddling a boundary shows both bands side by side.
-- The sticky header carries, left to right: the month(s) or year in view, the
-  year steppers (year view only), the Cal/Year view toggle, the 15/30/45 snap
-  selector (calendar view only), a Today button, and a Sign in button that
-  shows only when there is no token.
+- The sticky header carries, left to right: the month(s) or year in view
+  (heavier weight), the year steppers (year view only), the Cal/Year view
+  toggle, a Today button, and the account avatar. *(Revised 2026-08-23: the
+  15/30/45 selector moved to Settings; the Sign in button is replaced by the
+  first-run screen and the reconnect pill — see "First-run and connection
+  state".)*
+- A floating add button sits bottom-right, safe-area aware, in both views.
+  It opens the event form pre-filled with the date nearest the viewport
+  center (year view: today); `n` on desktop does the same. It must not
+  cover the last row's Sunday events on a notched phone.
 - Sticky header strip shows the month(s) currently in view — "March 2027", or
   "Feb – Mar 2027" when the view straddles a boundary, which at rest it does.
   It cross-fades as the visible range changes.
@@ -105,6 +120,31 @@ all 365 days, no scrolling on a desktop window.
 - Tap/click a day → day drawer (port from v2) with that day's events and the
   add/edit form.
 
+## First-run and connection state
+
+*(Added 2026-08-23, stage 05.)*
+
+Cold start with no auth and no cached months shows a first-run screen — app
+mark, name, one-line description, a Connect Google Calendar button (wraps
+`auth.signIn`), and a note that events live only in Google Calendar.
+Nothing else.
+
+If cached months exist but auth is stale, the calendar renders read-only
+from cache with a small reconnect pill in the header; the first-run screen
+never covers a warm cache (preserves the offline-open behavior).
+
+Signed in, the header shows the account initial in an avatar with a
+connection dot bound to auth state. The avatar opens Settings.
+
+## Settings
+
+*(Added 2026-08-23, stage 05.)*
+
+A sheet opened from the avatar: account row with sign-out, snap granularity
+15/30/45 (writes `prefs.snapStepDays`), default view (Cal/Year), sound stub
+(off, reserved). Backed entirely by existing prefs; no new storage. A
+background refresh must not close or reset the sheet.
+
 ## Perpetual scroll mechanics
 
 - Virtualized: render only the week rows the viewport needs plus a small
@@ -120,12 +160,30 @@ all 365 days, no scrolling on a desktop window.
 
 ## Visual direction
 
-Modern, clean, inviting. Light surface, generous whitespace, restrained
-neutral type (system font stack is fine); the user's commitments are the only
-strong color on screen. No gradients-for-decoration, no card chrome, no
-elevation or scaling on rows. Structure is communicated by the alternating
-month bands and the weekend shade — both neutral, both quiet. Dark mode:
-honor `prefers-color-scheme` with the same restraint.
+*(Revised 2026-08-23, stage 05. Approved reference: `05_polish/mock.html` —
+the spec describes intent, the mock fixes token values.)*
+
+Modern, clean, inviting. Warm neutral surfaces, generous whitespace,
+restrained type (system stack); the user's commitments are the only strong
+color on screen. No gradients-for-decoration, no card chrome, no elevation
+or scaling on rows.
+
+Structure is communicated by three quiet layers: alternating month bands,
+the weekend shade, and 1px hairline rules between week rows and day columns.
+In dark mode the surfaces are lifted warm graphite, never near black — the
+band contrast must survive a phone at arm's length. Category colors get
+brightened dark-mode variants; the light-mode hues fail contrast on tinted
+dark fills.
+
+Event bars are tinted: category color at ~16% as fill, full color for the
+text and a 3px left spine, 5px radius. Bars continuing across a row break
+keep a flat edge on the broken side and drop the spine. Timed chips carry a
+small category dot, a muted tabular time, and the title.
+
+Day numbers are tabular, top-right. Today's number sits in a filled ink
+circle — findable in under a second on a full grid. Desktop day cells take
+a faint hover wash. Dark mode honors `prefers-color-scheme` with the same
+restraint.
 
 ## PWA requirements
 
@@ -163,6 +221,7 @@ honor `prefers-color-scheme` with the same restraint.
 /src/sw.ts          — service worker
 /src/types.ts
 /src/style.css     — app stylesheet (added at stage 03)
+/src/chrome.ts      — first-run screen, settings sheet, FAB (added at stage 05)
 /.env.local         — VITE_GOOGLE_CLIENT_ID=... (gitignored)
 ```
 
@@ -175,8 +234,10 @@ Google Identity Services token model (`google.accounts.oauth2.initTokenClient`).
 - Cached in-memory token if valid; otherwise "Sign in with Google" button in
   the header. `requestAccessToken({prompt: ''})` for quiet renewal, interactive
   on failure. Any 401 → clear token, surface sign-in, never a dead state.
-- Exports exactly: `getToken(): Promise<string>`, `signIn()`, `isSignedIn()`.
-  Nothing outside this file touches auth.
+- Exports exactly: `getToken(): Promise<string>`, `signIn()`, `signOut()`,
+  `isSignedIn()`. Nothing outside this file touches auth. *(`signOut` added
+  2026-08-23, stage 05: Settings requires it — revoke the token via
+  `google.accounts.oauth2.revoke`, clear in-memory state.)*
 
 ## Calendar API (src/gcal.ts) — unchanged from v2 spec
 
@@ -225,6 +286,15 @@ calendar `primary`.
   a write fails visibly and rolls back
 - A full month fits the viewport on a phone with a notch and on a 27" monitor
   alike; day numbers are never clipped at the left edge
+- Cold start signed out shows the first-run screen; Connect lands on today.
+  A stale token over a warm cache shows the read-only calendar with a
+  reconnect pill, not the first-run screen
+- The add button (and `n` on desktop) opens the event form on the centered
+  date, from anywhere in time
+- Settings changes (snap, default view) persist across a reload; sign-out
+  returns to the first-run screen
+- In dark mode, the month boundary is readable from the bands alone on a
+  phone at arm's length — in both the calendar and the year view
 
 ---
 
