@@ -40,9 +40,12 @@
         --rule: #e5e2dc;
         --rule-strong: #d6d2ca;
         --hover: rgba(28, 25, 23, 0.045);
-        /* --today-rgb / --surface-rgb removed 2026-08-24 with the year-grid
-           glow: today is now the number pill + a 1.5px cell outline in
-           --ink (spec, Year view). */
+        /* Today's own colour — the ONE hue outside the four categories, and
+           the only thing it is ever used for. Red-for-today is the convention
+           every desktop calendar already teaches, so it reads as "now" rather
+           than as a fifth category or an error. Channels too, for the wash. */
+        --today: #e11d48;
+        --today-rgb: 225, 29, 72;
 
         --safe-top: env(safe-area-inset-top, 0px);
         --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -65,6 +68,9 @@
           --rule: #2e2924;
           --rule-strong: #3a342c;
           --hover: rgba(243, 241, 238, 0.05);
+          /* Lifted for the dark ground, same as the category hues below. */
+          --today: #fb7185;
+          --today-rgb: 251, 113, 133;
 
           /* Brightened category variants: the light-mode hues fail contrast
              on tinted dark fills. */

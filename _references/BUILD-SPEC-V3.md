@@ -78,21 +78,33 @@ all 365 days, no scrolling on a desktop window.
 *(Appended 2026-08-23, stage 05.)* The year view shares the calendar's
 visual system: alternating month bands with the weekend shade, 1px
 hairlines between cells, a 2px strong rule on each month's leading edge,
-the month badge pill, and the today ring scaled to cell size. Today's cell
-additionally carries a 1.5px inset outline in `--ink` — one cell, no fill,
-no gradient, no bleed into neighboring days *(chosen 2026-08-24, replacing
-a solid-fill-plus-gradient treatment that violated Visual direction)*.
-Per-day event bars stay full-color (tinting does not read at 4px).
+the month badge pill, and the today marker (below). Per-day event bars stay
+full-color (tinting does not read at 4px). The hover/tap panel is a card in
+the same tokens: three day rows, hovered day emphasized on a band surface,
+events with category dots and meridiem times. The add button is present here
+too, pre-filled with today.
 
-*(Revised 2026-08-24.)* At year scale a ring on one 44px cell out of 365 is
-not findable, so **today is a solid ink cell** with the surrounding days
-fading off it: a short lead-in on the day before, a tail out to nothing
-across the two days after. Ink, not a fifth hue — the four category colors
-are spoken for and commitments stay the only strong color on screen. Today's
-day number inverts on the solid cell. The hover/tap panel is
-a card in the same tokens: three day rows, hovered day emphasized on a band
-surface, events with category dots and meridiem times. The add button is
-present here too, pre-filled with today.
+**Today, in both views** *(settled 2026-08-24 after three attempts)*: a
+filled pill on the day number plus a wash across the day's cell, in `--today`
+— **one indicator at two scales**, so moving between calendar and year never
+asks the eye to relearn it. `--today` is the single reserved hue outside the
+four categories and is used for nothing else; red-for-today is the convention
+every desktop calendar already teaches, so it reads as "now" rather than as a
+fifth category. The wash is lighter in the calendar than in the year grid: a
+calendar cell is many times the area, and equal alpha over a bigger field
+reads as more emphasis, not the same.
+
+Rejected, and why, so they are not retried: a **solid ink cell with gradients
+fading into the neighbouring days** — the value out-shouted every event bar,
+the ramps read as lighting artifacts rather than meaning, they clipped hard at
+cell edges, and they marked a region instead of a day. A **1.5px inset outline
+on the cell** — around a tall, near-empty year cell an outline encloses
+nothing, so it parses as a form field.
+
+The **Today button goes to today without changing the view**: in the calendar
+it scrolls and re-snaps; in the year grid it pages back to the current year if
+you had stepped away and scrolls today into view. The Cal/Year toggle stays
+the only control that switches views.
 
 ## Layout details
 
@@ -125,8 +137,9 @@ present here too, pre-filled with today.
   sorted by start time, with start time shown.
 - Day numbers sit in the **top-right** of each day cell; the inline month
   label sits **top-left**, so the two never collide on the day a month starts.
-- Today: strong marker (filled day number), always findable via a "Today"
-  button in the header that animates the scroll back and re-snaps.
+- Today: filled day-number pill in `--today` plus a wash on the cell — the
+  same indicator the year view uses, see "Year view". Always findable via a
+  "Today" button in the header that animates the scroll back and re-snaps.
 - Tap/click a day → day drawer (port from v2) with that day's events and the
   add/edit form.
 

@@ -43,7 +43,7 @@ import {
   today,
   weekOf,
 } from './state.ts';
-import { currentYear, initYear, onYearDayClick, renderYear } from './year.ts';
+import { currentYear, initYear, onYearDayClick, renderYear, scrollToToday } from './year.ts';
 import type { WeekIndex } from './types.ts';
 
 /** Dev-only: `?selftest` runs the week-index assertions and prints them. */
@@ -217,8 +217,19 @@ function boot(): void {
     if (e.key === 'Escape' && drawerOpen()) closeDrawer();
   });
 
+  // Today goes to today WITHOUT changing the view you chose — the Cal/Year
+  // toggle stays the only thing that switches views. In the year grid that
+  // means paging back to the current year first if you had stepped away.
   const todayBtn = document.getElementById('today-btn');
-  todayBtn?.addEventListener('click', () => scrollToWeek(0 as WeekIndex, true));
+  todayBtn?.addEventListener('click', () => {
+    if (view !== 'year') {
+      scrollToWeek(0 as WeekIndex, true);
+      return;
+    }
+    const year = civilFromDay(today()).year;
+    if (currentYear() !== year) showYear(year);
+    scrollToToday();
+  });
 
   // --- auth-driven shell (stage 05) -----------------------------------------
   // auth.ts exports no change event by design, so poll it (a second's lag is

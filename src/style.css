@@ -217,13 +217,30 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Today ring: a filled circle, findable in under a second (spec). */
+/* Today: a filled pill on the day number plus a wash across the cell. The
+   SAME treatment as the year grid — one indicator, two scales — so moving
+   between views never asks the eye to relearn what "today" looks like.
+
+   The wash is a background-IMAGE, not a background-color: it composites over
+   the month band and the weekend shade instead of replacing them, which also
+   sidesteps the specificity fight with .col[data-band][data-we]. */
 .col[data-today='1'] .dnum {
   color: var(--surface);
-  background: var(--ink);
+  background: var(--today);
   border-radius: 999px;
   font-weight: 700;
   height: 18px;
+}
+
+/* 0.09 here against 0.14 in the year grid: a calendar cell is many times the
+   area, and equal alpha over a bigger field reads as more emphasis, not the
+   same. Matched by eye, not by number. */
+.cols .col[data-dow][data-today='1'] {
+  background-image: linear-gradient(
+    0deg,
+    rgba(var(--today-rgb), 0.09),
+    rgba(var(--today-rgb), 0.09)
+  );
 }
 
 .more {
@@ -481,22 +498,28 @@ pre.selftest {
   color: var(--ink);
 }
 
-/* Today in the year grid (revised 2026-08-24, spec Year view): the filled
-   number pill plus a 1.5px inset outline on today's cell only. One cell,
-   no fill, no gradients, no bleed — the outline is what the eye catches
-   when scanning 365 cells; ink, not a fifth colour.
+/* Today in the year grid — the same pill + wash as the calendar, at year
+   scale. An outline was tried here first and read as an empty form field: a
+   1.5px rectangle around a tall, near-empty cell encloses nothing, so the eye
+   parses it as a container rather than a date.
 
-   box-shadow rather than outline/border so the month-start rule
-   (inset 2px) can coexist below, and so cell size never shifts. The
-   [data-day] is a specificity bump: .ycell[data-band='1'][data-we='1']
-   is (0,3,0) and would otherwise beat this on banded weekends. */
+   background-image again, so the month band and weekend shade survive
+   underneath and no box-shadow is spent — .ycell already spends its
+   box-shadow on the month-start rule and the hover wash. */
 .ygrid .ycell[data-day][data-today='1'] {
-  box-shadow: inset 0 0 0 1.5px var(--ink);
+  background-image: linear-gradient(
+    0deg,
+    rgba(var(--today-rgb), 0.14),
+    rgba(var(--today-rgb), 0.14)
+  );
 }
 
-/* Today on the 1st of a month: keep the month-start rule visible too. */
-.ygrid .ycell[data-day][data-today='1'][data-first='1'] {
-  box-shadow: inset 2px 0 0 var(--rule-strong), inset 0 0 0 1.5px var(--ink);
+.ygrid .ycell[data-day][data-today='1'] .ynum {
+  background: var(--today);
+  color: var(--surface);
+  border-radius: 999px;
+  padding: 0 5px;
+  font-weight: 700;
 }
 
 

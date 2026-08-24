@@ -162,6 +162,18 @@ export function onYearDayClick(fn: (day: DayNumber) => void): void {
   clickListeners.push(fn);
 }
 
+/**
+ * Bring today's cell into view. A no-op when the grid already fits without
+ * scrolling, which is the desktop case the spec designs for — this earns its
+ * keep at 14 and 7 columns, where a year is taller than the viewport.
+ *
+ * Caller's job to be showing the right year first: this only scrolls.
+ */
+export function scrollToToday(): void {
+  host?.querySelector<HTMLElement>('.ycell[data-today="1"]')
+    ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+}
+
 export function currentYear(): number {
   return shownYear;
 }
@@ -257,8 +269,6 @@ export function renderYear(year: number): void {
     cell.dataset.band = civil.month % 2 === 0 ? '1' : '0';
     if (dow >= 5) cell.dataset.we = '1';
     if (day === todayDay) cell.dataset.today = '1';
-    // Neighbours of today carry their signed offset, so the glow can fade off
-    // today's solid cell: a short lead-in before, a longer tail after.
     if (civil.day === 1) cell.dataset.first = '1';
 
     const dowEl = document.createElement('span');
