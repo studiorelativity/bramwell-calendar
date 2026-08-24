@@ -167,14 +167,41 @@ appearing on every card.
   list; whether it crowds the list on a small notched phone is a device
   judgement.
 
-## Carried forward, unrelated to this stage
+## Service worker, fixed while closing this stage
 
-`sw.ts` precaches `/index.html`, but the deployed host (Cloudflare Workers
-static assets) 307-redirects that path to `/`. The offline navigation
-fallback matches `/index.html`, so Definition-of-done item 9 may fail on the
-deployed origin for reasons that have nothing to do with the service worker
-logic. Flagged during deployment on 2026-08-22, not yet fixed; stage 04's
-output owns it.
+Stage 07 shipped to the deployed origin and was invisible on an installed
+client. Cause: `sw.ts` served every same-origin GET cache-first, including
+the shell HTML. `/index.html` keeps its URL across deploys, so the cached
+copy kept pointing at a bundle that was no longer current, and the hashed
+bundle it named was cached too. Nothing could break the loop except bumping
+`CACHE` by hand — which stage 05 had done, and stage 07 had not. **No deploy
+could ever reach an installed client on its own.**
+
+Rewritten to split on whether a URL is content-addressed:
+
+| Path | Strategy | Why |
+|---|---|---|
+| `/assets/*` | cache-first | Hashed filenames — a hit is always current |
+| everything else | network-first, cache as offline fallback | URL is stable across content changes, so a cached copy can be arbitrarily stale |
+
+Two related defects fixed in the same pass:
+
+- `/index.html` is out of `SHELL`. Workers static assets 307s it to `/`, and
+  `cache.add` would have stored a redirected response, which the browser
+  refuses to replay for a navigation — so the offline fallback would have
+  failed on the deployed host. It now falls back to `/`, which returns 200.
+- Responses are never cached when `response.redirected` is true, so the same
+  class of bug cannot be reintroduced by a different path.
+
+`CACHE` bumped to `bramwell-shell-v4` once, to evict the v3 caches holding a
+pre-stage-07 shell. It should not need bumping again: the strategy no longer
+depends on it.
+
+Verified: `dist/sw.js` still emits at the site root, parses as a classic
+script (`node --check`), contains no ESM, and the minified output carries all
+three behaviours. **The runtime behaviour is untested** — headless Chrome
+still hangs on service worker registration under a virtual-time budget, which
+is the same gap stage 04 recorded. First real install is the test.
 
 ## Human gate checklist
 

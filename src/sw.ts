@@ -1,6 +1,13 @@
-// STAGE 04 — service worker. Precache the app shell, cache-first for static
-// assets. Calendar API responses are NEVER cached here: the localStorage
-// cache owns data, and SW-cached API responses cause stale-auth confusion.
+// STAGE 04 — service worker. Revised 2026-08-24 (see 07_notes gate notes).
+//
+// Two strategies, split on whether the URL is content-addressed:
+//   /assets/*  cache-first  — hashed filenames, a hit is always current
+//   everything else  network-first, cache as offline fallback
+// The shell HTML keeps its URL across deploys, so serving it cache-first made
+// every deploy invisible to installed clients.
+//
+// Calendar API responses are NEVER cached here: the localStorage cache owns
+// data, and SW-cached API responses cause stale-auth confusion.
 //
 // No imports: the build emits this as a standalone /sw.js so its scope is the
 // site root. Anything imported here would be bundled in.
@@ -26,17 +33,22 @@ interface WorkerScope {
 
 declare const self: WorkerScope;
 
-// v3 (stage 05): index.html's tokens and header changed, and the shell is
-// served cache-first — only a byte-change in this file makes an existing
-// install re-fire install and re-prime. Bump this on EVERY shell change.
-const CACHE = 'bramwell-shell-v3';
+// v4 (stage 07 deploy): the shell is no longer served cache-first, so this no
+// longer has to be bumped on every shell change — that requirement was the bug.
+// Bumped once here to evict the v3 caches holding a pre-stage-07 index.html.
+const CACHE = 'bramwell-shell-v4';
 /**
  * Only paths the build actually emits at these URLs. The manifest, JS and CSS
  * are content-hashed into /assets/ and cannot be named here; they are picked
  * up by the runtime cache below on the first online load, which always happens
  * before the app is useful anyway — signing in requires the network.
+ *
+ * `/index.html` is deliberately ABSENT. Cloudflare Workers static assets 307s
+ * it to `/`, and a redirected response cannot be replayed for a navigation —
+ * `cache.add` would store one and offline open would then fail. `/` is the
+ * canonical entry and returns 200.
  */
-const SHELL = ['/', '/index.html', '/icon-192.png', '/icon-512.png'];
+const SHELL = ['/', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -57,6 +69,18 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+/**
+ * Store a copy without blocking the response.
+ *
+ * A redirected response is never stored: replaying one for a navigation is
+ * rejected by the browser, and the host 307s `/index.html` to `/`.
+ */
+function keep(request: Request, response: Response): void {
+  if (!response.ok || response.redirected) return;
+  const copy = response.clone();
+  void caches.open(CACHE).then((cache) => cache.put(request, copy));
+}
+
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   if (request.method !== 'GET') return;
@@ -66,25 +90,43 @@ self.addEventListener('fetch', (event) => {
   // Neither may ever be cached here.
   if (url.origin !== self.location.origin) return;
 
+  // Content-hashed by the build: a changed byte means a changed URL, so a hit
+  // is always current and can be served without asking the network.
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      caches.match(request).then(
+        (hit) =>
+          hit ??
+          fetch(request).then((response) => {
+            keep(request, response);
+            return response;
+          }),
+      ),
+    );
+    return;
+  }
+
+  // Everything else — the shell HTML above all — keeps its URL when its
+  // contents change, so a cached copy can be arbitrarily stale. Serving it
+  // cache-first is what made deploys invisible to installed clients: the
+  // cached index.html kept pointing at a bundle that was no longer current,
+  // and only a manual CACHE bump could break the loop. Network-first, with
+  // the cache as the offline fallback.
   event.respondWith(
-    caches.match(request).then((hit) => {
-      if (hit) return hit;
-      return fetch(request)
-        .then((response) => {
-          if (response.ok && (url.pathname.startsWith('/assets/') || SHELL.includes(url.pathname))) {
-            const copy = response.clone();
-            void caches.open(CACHE).then((cache) => cache.put(request, copy));
-          }
-          return response;
-        })
-        .catch(async () => {
-          // Offline: a navigation still opens, read-only, from the cache.
-          if (request.mode === 'navigate') {
-            const shell = await caches.match('/index.html');
-            if (shell) return shell;
-          }
-          return Response.error();
-        });
-    }),
+    fetch(request)
+      .then((response) => {
+        keep(request, response);
+        return response;
+      })
+      .catch(async () => {
+        const hit = await caches.match(request);
+        if (hit) return hit;
+        // Offline: a navigation still opens, read-only, from the cached shell.
+        if (request.mode === 'navigate') {
+          const shell = await caches.match('/');
+          if (shell) return shell;
+        }
+        return Response.error();
+      }),
   );
 });
