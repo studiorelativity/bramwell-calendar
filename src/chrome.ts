@@ -215,12 +215,12 @@ function categoryRow(cat: StoredCategory, fallback: CategoryName): HTMLElement {
   // fallback) removal.
   const main = el('div', 'catrow-main');
 
-  const pickWrap = el('label', 'catpickwrap');
+  const pickWrap = el('label', 'catcolorwrap');
   pickWrap.title = 'Colour shown in Bramwell';
   const shown = swatch('display', display, 'Colour shown in Bramwell');
   const picker = document.createElement('input');
   picker.type = 'color';
-  picker.className = 'catpick';
+  picker.className = 'catcolorin';
   picker.value = display;
   picker.setAttribute('aria-label', `Display colour for ${cat.label}`);
   picker.addEventListener('input', () => {

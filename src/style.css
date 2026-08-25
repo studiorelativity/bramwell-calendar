@@ -1321,15 +1321,20 @@ pre.selftest {
 }
 
 /* The swatch IS the picker: the native colour input is stretched over it and
-   made invisible, so the hit target is the square you can see. */
-.catpickwrap {
+   made invisible, so the hit target is the square you can see.
+
+   NOT named `.catpick` — that class has belonged to the event form's category
+   chip CONTAINER since stage 04, where it carries no rule of its own. Styling
+   it here stretched an invisible absolute box over the whole drawer panel and
+   made the event form unclickable. See 08_customize/output/verification.md. */
+.catcolorwrap {
   position: relative;
   display: inline-flex;
   flex: none;
   cursor: pointer;
 }
 
-.catpick {
+.catcolorin {
   position: absolute;
   inset: 0;
   opacity: 0;

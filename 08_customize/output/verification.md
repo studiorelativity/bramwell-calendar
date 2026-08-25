@@ -307,3 +307,87 @@ Requires a real Google account. `?demo` covers items 6–8 without one.
 9. On an installed PWA on a phone: confirm the colour picker and the colour
    dropdown are usable, and that the sheet scrolls to reach the Mood row with
    11 categories in the list.
+
+---
+
+## Regression, found and fixed 2026-08-25 — the event form was unclickable
+
+Reported from `cal.no.fail`, signed in: the day drawer opened and day notes
+worked, but the event form did not respond to anything — Save, Cancel and the
+title field were all dead, "like the screen is frozen", and only clicking to
+the left (the drawer's backdrop) got out of it.
+
+### Cause: a CSS class-name collision I introduced
+
+`drawer.ts:202` has named the event form's category-chip **container**
+`catpick` since stage 04:
+
+```
+const cats = document.createElement('div');
+cats.className = 'catpick';          // "category picker"
+```
+
+Its only rule was a layout one, `style.css:821`:
+
+```
+.catpick, .scopepick { display: flex; flex-wrap: wrap; gap: 6px; }
+```
+
+Stage 08 added a `.catpick` for something entirely different — the settings
+sheet's `<input type="color">`, stretched invisibly over its swatch:
+
+```
+.catpick { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; }
+```
+
+Same specificity, later in the file, so it applied to the drawer's container
+too. The chip row became an **absolutely positioned, fully transparent box
+covering the entire drawer panel**, and its chips — flex items in a
+900px-tall box — stretched to full height. Every click in the form landed on
+a chip instead of the control under it.
+
+Measured on the shipped build, `elementFromPoint` at each control's centre:
+
+```
+BEFORE   save        rect [876,852,308,36]   top element: BUTTON.catopt   reachable: false
+         cancel      rect [796,852, 72,36]   top element: BUTTON.catopt   reachable: false
+         titleInput  rect [796, 80,388,34]   top element: BUTTON.catopt   reachable: false
+         chip        rect [780,  0, 75,900]  <- 900px tall, the whole panel
+
+AFTER    save        rect [876,852,308,36]   top element: BUTTON.btn.primary.grow   reachable: true
+         cancel      rect [796,852, 72,36]   top element: BUTTON.btn               reachable: true
+         titleInput  rect [796, 80,388,34]   top element: INPUT                    reachable: true
+         chip        rect [796,144, 75,27]   <- normal chip
+```
+
+Every reported symptom follows from that one rect: the form *looked* right
+(the covering box is `opacity: 0`), nothing in it could be clicked, the
+backdrop outside the panel still closed the drawer, and **day notes were
+unaffected because the notes panel is a sibling shown only while the form is
+hidden.**
+
+### Fix
+
+The drawer's class is older and load-bearing, so the new one moved:
+`.catpick` → `.catcolorin`, `.catpickwrap` → `.catcolorwrap`, in `style.css`
+and `chrome.ts`. A comment at the new rule records why the old name is
+off-limits. No logic changed; `npm run build` clean.
+
+A full audit of all 19 class names stage 08 introduced against every class
+token used anywhere in the pre-stage tree found exactly one collision, this
+one. The `cat*` family already held `catopt`, `catdot` and `catpick`.
+
+### Why the stage-08 gate missed it
+
+**Every automated check in this document drove the UI with
+`element.click()`, which dispatches directly to the node and bypasses hit
+testing entirely.** A control covered by a transparent overlay reports
+success under that method. The gate's "Save reaches the write and returns the
+demo message" was true and meaningless — no user could have produced that
+click.
+
+Both lessons are now rules in `_references/conventions.md`: grep the whole
+tree for a bare class token before adding one, and back any "this control
+works" claim with `document.elementFromPoint()` resolving to the control
+itself. The hit test is what found this; nothing else did, across four
+scenarios in dev and production.
