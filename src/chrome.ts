@@ -11,7 +11,22 @@
 // background month refresh cannot close or reset them by construction.
 
 import { isSignedIn, signIn, signOut } from './auth.ts';
-import { prefs, savePrefs } from './state.ts';
+import {
+  MAX_CATEGORIES,
+  configure as configureCategories,
+  currentMood,
+  fallbackCategory as resolvedFallback,
+  googleColor,
+  googleColors,
+  moods,
+  normalizeHex,
+  slugFor,
+  storedCategories,
+  swatchPair,
+  usedColorIds,
+} from './categories.ts';
+import { isDemo, prefs, savePrefs } from './state.ts';
+import type { CategoryName, ColorId, StoredCategory } from './types.ts';
 
 export type ViewName = 'calendar' | 'year';
 export type SnapDays = 15 | 30 | 45;
@@ -27,6 +42,12 @@ export interface ChromeCallbacks {
   onDemo: () => void;
   /** Leave demo mode and start real sign-in (stage 06). */
   onDemoExit: () => void;
+  /**
+   * The category set, a colour, or the mood changed (stage 08). categories.ts
+   * already holds the new set and prefs already hold it too (except in demo);
+   * this asks main.ts to re-emit the tokens and repaint.
+   */
+  onColorsChange: () => void;
 }
 
 let callbacks: ChromeCallbacks | null = null;
@@ -99,6 +120,287 @@ function buildFirstRun(): HTMLElement {
   screen.querySelector('.fr-demo')?.addEventListener('click', () => callbacks?.onDemo());
   document.body.append(screen);
   return screen;
+}
+
+
+// -- colors (STAGE 08) ---------------------------------------------------------
+// The category set, its two colour layers, and the mood. Everything here edits
+// a plain StoredCategory[] and hands it to categories.ts; this module never
+// resolves a colour itself.
+
+let colorsHost: HTMLElement | null = null;
+
+/**
+ * Install an edited set, persist it, and ask main.ts to repaint.
+ *
+ * Persisting is skipped in demo — customization applies in memory and writes
+ * nothing, the same rule the demo cache follows. `storedCategories()` is read
+ * back after `configure` so what is saved is what was actually accepted, not
+ * what was proposed.
+ */
+function commitColors(patch: { categories?: StoredCategory[]; mood?: string }): void {
+  const categories = patch.categories ?? storedCategories().map((c) => ({ ...c }));
+  const mood = patch.mood ?? currentMood();
+  // The fallback can never be deleted, so its name always survives an edit;
+  // configure() re-picks one anyway if a corrupt prefs blob ever lost it.
+  configureCategories({ categories, fallbackCategory: resolvedFallback().name, mood });
+  if (!isDemo()) {
+    savePrefs({
+      categories: storedCategories().map((c) => ({ ...c })),
+      fallbackCategory: resolvedFallback().name,
+      mood: currentMood(),
+    });
+  }
+  callbacks?.onColorsChange();
+}
+
+/**
+ * Edit one category in place.
+ *
+ * `rebuild` is the focus rule: a label being typed must not have its input
+ * torn out from under the caret, so text edits commit without repainting.
+ * Structural edits (colorId, clearing an override) do repaint, because the
+ * other rows' disabled colours change with them.
+ */
+function patchCategory(
+  name: CategoryName,
+  mutate: (c: StoredCategory) => void,
+  rebuild: boolean,
+): void {
+  const next = storedCategories().map((c) => ({ ...c }));
+  const target = next.find((c) => c.name === name);
+  if (!target) return;
+  mutate(target);
+  commitColors({ categories: next });
+  if (rebuild) paintColors();
+}
+
+function addCategory(): void {
+  const next = storedCategories().map((c) => ({ ...c }));
+  if (next.length >= MAX_CATEGORIES) return;
+  const used = new Set(next.map((c) => c.colorId));
+  const free = googleColors().find((gc) => !used.has(gc.id));
+  if (!free) return; // unreachable: the cap and the palette are the same size
+  const label = 'New category';
+  const name = slugFor(
+    label,
+    next.map((c) => c.name),
+  );
+  next.push({ name, label, colorId: free.id });
+  commitColors({ categories: next });
+  paintColors();
+  colorsHost?.querySelector<HTMLInputElement>(`.catrow[data-cat="${name}"] .catlab`)?.select();
+}
+
+function deleteCategory(name: CategoryName): void {
+  if (name === resolvedFallback().name) return; // belt: the row has no control
+  commitColors({ categories: storedCategories().filter((c) => c.name !== name).map((c) => ({ ...c })) });
+  paintColors();
+}
+
+function swatch(kind: 'display' | 'google', hex: string, title: string): HTMLElement {
+  const node = el('span', `catsw is-${kind}`);
+  node.style.setProperty('--sw', hex);
+  node.title = title;
+  return node;
+}
+
+function categoryRow(cat: StoredCategory, fallback: CategoryName): HTMLElement {
+  const row = el('div', 'catrow');
+  row.dataset.cat = cat.name;
+  const { display, google } = swatchPair(cat);
+  const googleName = googleColor(cat.colorId)?.name ?? 'Unknown';
+
+  // Line 1: what Bramwell paints, the label, and (unless this is the
+  // fallback) removal.
+  const main = el('div', 'catrow-main');
+
+  const pickWrap = el('label', 'catpickwrap');
+  pickWrap.title = 'Colour shown in Bramwell';
+  const shown = swatch('display', display, 'Colour shown in Bramwell');
+  const picker = document.createElement('input');
+  picker.type = 'color';
+  picker.className = 'catpick';
+  picker.value = display;
+  picker.setAttribute('aria-label', `Display colour for ${cat.label}`);
+  picker.addEventListener('input', () => {
+    const hex = normalizeHex(picker.value);
+    if (!hex) return;
+    shown.style.setProperty('--sw', hex);
+    // No rebuild: a colour input fires continuously while the user drags.
+    patchCategory(cat.name, (c) => {
+      c.displayHex = hex;
+    }, false);
+  });
+  // The "clear" control only exists once an override does, so appearing is a
+  // structural change — repaint on the way out of the picker, not during it.
+  picker.addEventListener('change', () => paintColors());
+  pickWrap.append(shown, picker);
+
+  const label = document.createElement('input');
+  label.type = 'text';
+  label.className = 'catlab';
+  label.value = cat.label;
+  label.maxLength = 24;
+  label.setAttribute('aria-label', 'Category name');
+  label.addEventListener('input', () => {
+    patchCategory(cat.name, (c) => {
+      c.label = label.value;
+    }, false);
+  });
+  label.addEventListener('blur', () => {
+    if (label.value.trim()) return;
+    // An empty label would leave an unclickable chip in the event form.
+    label.value = 'Untitled';
+    patchCategory(cat.name, (c) => {
+      c.label = 'Untitled';
+    }, false);
+  });
+
+  main.append(pickWrap, label);
+
+  if (cat.name !== fallback) {
+    const del = el('button', 'catdel', '&times;');
+    del.type = 'button';
+    del.setAttribute('aria-label', `Remove ${cat.label}`);
+    // Two-step rather than a modal: a confirm() dialog on top of the sheet is
+    // heavy for something that touches no data in Google.
+    del.addEventListener('click', () => {
+      if (del.dataset.armed === '1') {
+        deleteCategory(cat.name);
+        return;
+      }
+      del.dataset.armed = '1';
+      del.textContent = 'Remove?';
+    });
+    main.append(del);
+  } else {
+    const role = el('span', 'catrole', 'fallback');
+    role.title = 'Events with an unrecognised colour land here. Cannot be removed.';
+    main.append(role);
+  }
+
+  // Line 2: what Google stores. Both swatches are visible at once, so a
+  // divergence between the layers is something you can see rather than
+  // discover in the Google Calendar app.
+  const sub = el('div', 'catrow-sub');
+  sub.append(swatch('google', google, `In Google Calendar: ${googleName}`));
+
+  const select = document.createElement('select');
+  select.className = 'catcol';
+  select.setAttribute('aria-label', `Google colour for ${cat.label}`);
+  const taken = usedColorIds(cat.name);
+  for (const gc of googleColors()) {
+    const option = document.createElement('option');
+    option.value = gc.id;
+    option.textContent = gc.name;
+    option.style.color = gc.hex;
+    // THE INVARIANT: a colorId held by another category is unreachable here,
+    // so two categories on one colorId cannot be produced by clicking.
+    if (taken.has(gc.id)) {
+      option.disabled = true;
+      option.textContent = `${gc.name} — in use`;
+    }
+    if (gc.id === cat.colorId) option.selected = true;
+    select.append(option);
+  }
+  select.addEventListener('change', () => {
+    patchCategory(cat.name, (c) => {
+      c.colorId = select.value as ColorId;
+    }, true);
+  });
+  sub.append(select);
+
+  if (cat.displayHex) {
+    const clear = el('button', 'catclear', 'Match Google');
+    clear.type = 'button';
+    clear.title = 'Drop the display colour and follow the Google colour';
+    clear.addEventListener('click', () => {
+      patchCategory(cat.name, (c) => {
+        delete c.displayHex;
+      }, true);
+    });
+    sub.append(clear);
+  }
+
+  row.append(main, sub);
+  return row;
+}
+
+function moodPicker(): HTMLElement {
+  const row = el('div', 'sheet-row');
+  row.append(
+    el('div', 'sheet-lab', 'Mood<span class="sheet-sub">Surface and month bands</span>'),
+  );
+  const group = el('div', 'moods');
+  group.setAttribute('role', 'group');
+  group.setAttribute('aria-label', 'Mood');
+  for (const mood of moods()) {
+    const option = el('button', 'moodopt');
+    option.type = 'button';
+    option.title = mood.label;
+    option.setAttribute('aria-label', mood.label);
+    option.setAttribute('aria-pressed', String(mood.id === currentMood()));
+    // Both variants: the swatch shows the mood you would actually get, which
+    // depends on the viewer's colour scheme.
+    option.style.setProperty('--m-a', mood.light[0]);
+    option.style.setProperty('--m-b', mood.light[1]);
+    option.style.setProperty('--m-a-dark', mood.dark[0]);
+    option.style.setProperty('--m-b-dark', mood.dark[1]);
+    option.addEventListener('click', () => {
+      commitColors({ mood: mood.id });
+      paintColors();
+    });
+    group.append(option);
+  }
+  row.append(group);
+  return row;
+}
+
+/** Rebuild the Colors section. Called only from its own edits — never from a
+ *  cache change, which is what keeps the transient-UI rule true here. */
+function paintColors(): void {
+  const host = colorsHost;
+  if (!host) return;
+  host.replaceChildren();
+
+  const list = storedCategories();
+  const fallback = resolvedFallback().name;
+
+  const head = el('div', 'sheet-sechead', 'Colors');
+  head.append(
+    el(
+      'span',
+      'sheet-sub',
+      'The Google colour is what the Google Calendar app shows. ' +
+        'The display colour is what Bramwell paints.',
+    ),
+  );
+  host.append(head);
+
+  const rows = el('div', 'catrows');
+  for (const cat of list) rows.append(categoryRow(cat, fallback));
+  host.append(rows);
+
+  const addRow = el('div', 'catadd-row');
+  const add = el('button', 'catadd', '+ Add category');
+  add.type = 'button';
+  add.disabled = list.length >= MAX_CATEGORIES;
+  add.addEventListener('click', () => addCategory());
+  addRow.append(add);
+  if (add.disabled) {
+    addRow.append(
+      el(
+        'span',
+        'catcap',
+        `${MAX_CATEGORIES} is the maximum — Google Calendar has ${MAX_CATEGORIES} event colours, ` +
+          'and the colour is how an event finds its way back to a category.',
+      ),
+    );
+  }
+  host.append(addRow);
+
+  host.append(moodPicker());
 }
 
 // -- settings sheet ------------------------------------------------------------
@@ -177,7 +479,11 @@ function buildSheet(): HTMLElement {
     ),
   );
 
-  card.append(head, account, snapRow, viewRow, soundRow);
+  // Colors (stage 08). Built once here and repainted only by its own edits.
+  colorsHost = el('div', 'sheet-colors');
+  paintColors();
+
+  card.append(head, account, snapRow, viewRow, soundRow, colorsHost);
   overlay.append(card);
   // Click on the dimmed backdrop closes; clicks inside the card do not bubble
   // to it because the card is a child — check the target.

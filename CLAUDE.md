@@ -23,6 +23,7 @@ verification artifacts only.
 | Visual pass, first-run, settings, FAB | 05_polish | 05_polish/CONTEXT.md |
 | Demo mode, README, open-source prep | 06_share | 06_share/CONTEXT.md |
 | Day notes (extended-property events) | 07_notes | 07_notes/CONTEXT.md |
+| Category/colour customization, mood | 08_customize | 08_customize/CONTEXT.md |
 
 ## Rules
 - One stage per session. Read only that stage's CONTEXT.md and the spec

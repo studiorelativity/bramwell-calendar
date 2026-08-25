@@ -52,19 +52,35 @@ export interface WeekRange {
 // Categories
 // ---------------------------------------------------------------------------
 
-/** The four categories. Unknown/absent colorId on read resolves to 'other'. */
-export type CategoryName = 'work' | 'personal' | 'financial' | 'other';
+/**
+ * A category's stable key. STAGE 08 widened this from the four-name union to
+ * a plain string: the set is user-defined now, so this is a key, not an enum.
+ * The seed's four keys ('work' | 'personal' | 'financial' | 'other') never
+ * change — cached and remote events are addressed by them.
+ */
+export type CategoryName = string;
 
-/** Google Calendar event colorId, as a string ("9", "10", "5", "8"). */
+/** Google Calendar event colorId, as a string — "1".."11". */
 export type ColorId = Brand<string, 'ColorId'>;
 
-export interface Category {
+/**
+ * STAGE 08 — one category exactly as it is stored in prefs. This shape IS the
+ * persisted format; do not add fields to it without a spec change.
+ */
+export interface StoredCategory {
+  /** Immutable key. Renaming edits `label`, never this. */
   name: CategoryName;
-  /** Google Calendar colorId this category round-trips through. */
-  colorId: ColorId;
-  /** Swatch used by the UI; mirrors the CSS custom property. */
-  hex: string;
   label: string;
+  /** Layer 1: what Google stores and the Google apps show. Unique across the set. */
+  colorId: ColorId;
+  /** Layer 2, optional: what Bramwell paints. Unset -> the colorId's own hex. */
+  displayHex?: string;
+}
+
+/** A resolved category — stored fields plus the colour the UI should use. */
+export interface Category extends StoredCategory {
+  /** Resolved display colour: `displayHex` if set, else the colorId's hex. */
+  hex: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -170,4 +186,16 @@ export interface Prefs {
    * (Stage 05.)
    */
   defaultView?: 'calendar' | 'year';
+  /**
+   * STAGE 08 — the user's category set. Absent means "the seed", which is
+   * what makes a pre-stage install and a fresh one render identically.
+   */
+  categories?: StoredCategory[];
+  /**
+   * STAGE 08 — name of the category unknown/absent colorIds resolve to. It
+   * cannot be deleted. Absent means 'other', the seed's fallback.
+   */
+  fallbackCategory?: CategoryName;
+  /** STAGE 08 — surface/band tint id from the curated set. Absent means 'warm'. */
+  mood?: string;
 }

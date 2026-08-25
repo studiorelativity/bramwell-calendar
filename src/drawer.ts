@@ -5,7 +5,7 @@
 //
 // Module boundary: UI -> state.ts -> gcal.ts. This file never touches gcal.
 
-import { allCategories } from './categories.ts';
+import { allCategories, categoryOf } from './categories.ts';
 import {
   civilFromDay,
   createEvent,
@@ -18,6 +18,7 @@ import {
 } from './state.ts';
 import type {
   CalendarEvent,
+  Category,
   CategoryName,
   DayNumber,
   EventDraft,
@@ -307,12 +308,20 @@ function build(host: HTMLElement): void {
 
 // -- category picker -----------------------------------------------------------
 
-let chosenCategory: CategoryName = 'work';
+// STAGE 08: the set is the user's, so the default is "the first one", not a
+// literal name — 'work' may not exist.
+let chosenCategory: CategoryName = '';
 
 function paintCategories(): void {
   const host = els.cats;
   host.replaceChildren();
-  for (const category of allCategories()) {
+  const categories = allCategories();
+  // The chosen one may have been renamed out of existence between openings of
+  // the form; fall back to the first chip rather than showing none selected.
+  if (!categories.some((c) => c.name === chosenCategory)) {
+    chosenCategory = (categories[0] as Category).name;
+  }
+  for (const category of categories) {
     const option = document.createElement('button');
     option.type = 'button';
     option.className = 'catopt';
@@ -424,7 +433,9 @@ function paintList(): void {
     t.textContent = event.title + (isRecurring(event) ? ' ↻' : '');
     const m = document.createElement('div');
     m.className = 'evmeta';
-    m.textContent = `${timeText(event)} · ${event.category}`;
+    // The label, not the key: a category's name is machinery, its label is
+    // what the user typed.
+    m.textContent = `${timeText(event)} · ${categoryOf(event.category).label}`;
     row.append(t, m);
     row.addEventListener('click', () => openForm(event));
     els.list.append(row);

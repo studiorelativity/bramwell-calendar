@@ -19,8 +19,12 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <title>Bramwell Calendar</title>
     <style>
-      /* The four category colors, defined once (conventions.md).
-         Values revised at stage 05 per the approved 05_polish/mock.html. */
+      /* SEED VALUES ONLY (stage 08). These are what the page paints before
+         the first script runs, and the floor under anything the runtime
+         does not set. The live category colors and the surface/band mood
+         are emitted by main.ts into <style id="theme-vars"> from
+         categories.ts's themeCss(), and they override everything here.
+         Values are stage 05's, per the approved 05_polish/mock.html. */
       :root {
         --cat-work: #3056d3;
         --cat-personal: #17925a;

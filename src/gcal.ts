@@ -3,7 +3,7 @@
 // conversion, including the all-day exclusive/inclusive end-date fix.
 
 import { getToken } from './auth.ts';
-import { categoryFromColorId, colorIdFor } from './categories.ts';
+import { categoryFromColorId, colorIdFor, fallbackColorId } from './categories.ts';
 import type {
   CalendarEvent,
   DayNumber,
@@ -201,7 +201,8 @@ function payload(draft: Partial<EventDraft>): Record<string, unknown> {
     const text = draft.notes ?? draft.title ?? '';
     body.summary = firstLine(text);
     body.description = text;
-    body.colorId = colorIdFor('other');
+    // STAGE 08: the fallback is a role now, not the literal name 'other'.
+    body.colorId = fallbackColorId();
     body.extendedProperties = { private: { [DAYNOTE_PROP]: DAYNOTE_VALUE } };
   }
 

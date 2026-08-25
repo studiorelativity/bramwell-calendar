@@ -397,19 +397,11 @@ body {
 }
 
 /* --- category colours ----------------------------------------------------- */
-
-[data-cat='work'] {
-  --cat: var(--cat-work);
-}
-[data-cat='personal'] {
-  --cat: var(--cat-personal);
-}
-[data-cat='financial'] {
-  --cat: var(--cat-financial);
-}
-[data-cat='other'] {
-  --cat: var(--cat-other);
-}
+/* STAGE 08: the `[data-cat=...]` rules are generated now — one per category,
+   light and dark, plus a base rule carrying the fallback colour so an event
+   whose category was deleted still paints. They live in <style id="theme-vars">,
+   written by main.ts from categories.ts's themeCss(). Nothing static here can
+   name a category, because the set is the user's. */
 
 /* --- selftest ------------------------------------------------------------- */
 
@@ -1275,6 +1267,203 @@ pre.selftest {
   background: var(--ink);
   color: var(--surface);
   font-weight: 600;
+}
+
+/* --- settings: colors (stage 08) ------------------------------------------- */
+
+.sheet-colors {
+  border-top: 1px solid var(--rule);
+}
+
+.sheet-sechead {
+  padding: 12px 16px 6px;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.catrows {
+  padding: 0 16px;
+}
+
+.catrow {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.catrow-main,
+.catrow-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.catrow-sub {
+  margin-top: 6px;
+  padding-left: 28px;
+}
+
+/* Both layers as swatches side by side: the display colour on the label line,
+   the Google colour on the line that sets it. A divergence between them is
+   meant to be seen, not discovered in the Google Calendar app. */
+.catsw {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: 6px;
+  background: var(--sw);
+  border: 1px solid var(--rule-strong);
+}
+
+.catsw.is-google {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+}
+
+/* The swatch IS the picker: the native colour input is stretched over it and
+   made invisible, so the hit target is the square you can see. */
+.catpickwrap {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  cursor: pointer;
+}
+
+.catpick {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+}
+
+.catlab {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+
+.catlab:hover {
+  border-color: var(--rule);
+}
+
+.catlab:focus {
+  outline: none;
+  border-color: var(--rule-strong);
+  background: var(--surface);
+}
+
+.catcol {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 12px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  padding: 3px 6px;
+}
+
+.catclear,
+.catdel,
+.catadd {
+  font: inherit;
+  font-size: 11.5px;
+  color: var(--ink-muted);
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  padding: 3px 9px;
+  cursor: pointer;
+  flex: none;
+}
+
+.catdel {
+  font-size: 15px;
+  line-height: 1;
+  padding: 2px 8px;
+  border-color: transparent;
+}
+
+/* Armed state of the two-step delete — a word, not a modal on top of a sheet. */
+.catdel[data-armed='1'] {
+  font-size: 11.5px;
+  padding: 3px 9px;
+  color: #dc2626;
+  border-color: #dc2626;
+}
+
+.catrole {
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  flex: none;
+  letter-spacing: 0.02em;
+}
+
+.catadd-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 16px 12px;
+}
+
+.catadd {
+  font-size: 12.5px;
+  padding: 5px 11px;
+  color: var(--ink);
+}
+
+.catadd:disabled {
+  color: var(--ink-faint);
+  cursor: default;
+}
+
+.catcap {
+  flex: 1 1 100%;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--ink-muted);
+}
+
+/* --- settings: mood (stage 08) --------------------------------------------- */
+
+.moods {
+  display: flex;
+  gap: 6px;
+}
+
+/* Each swatch is the mood's own band pair, split down the middle — the thing
+   the option actually changes, at the size it is judged at. */
+.moodopt {
+  width: 26px;
+  height: 22px;
+  padding: 0;
+  cursor: pointer;
+  border: 1px solid var(--rule-strong);
+  border-radius: 6px;
+  background: linear-gradient(to right, var(--m-a) 0 50%, var(--m-b) 50% 100%);
+}
+
+.moodopt[aria-pressed='true'] {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 1px var(--ink);
+}
+
+@media (prefers-color-scheme: dark) {
+  .moodopt {
+    background: linear-gradient(to right, var(--m-a-dark) 0 50%, var(--m-b-dark) 50% 100%);
+  }
 }
 
 /* --- toast + offline ------------------------------------------------------- */

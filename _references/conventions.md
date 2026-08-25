@@ -25,4 +25,14 @@ goes here (edit-source principle).
   unavoidable, add it to the spec's file layout FIRST, then create it.
   Consequences so far: style tokens live in an `index.html` <style> block; two
   lines of civil-date math are duplicated across `gcal.ts` and `state.ts` to
-  keep the import graph acyclic.
+  keep the import graph acyclic; stage 08's Google colour table and mood
+  palette went into `categories.ts` (spec layout updated first) rather than a
+  new `theme.ts`.
+
+- **A leaf module needs data that lives in `state.ts`.** Hit twice: civil-date
+  math (02) and the category set (08). The graph is `state -> gcal ->
+  categories`, so a leaf that imports `state.ts` closes a cycle. Do NOT import
+  it and do NOT duplicate the storage. Give the leaf a `configure(...)` entry
+  point and let `main.ts` — whose whole job is wiring — read prefs and push
+  the data in. Corollary: leaf modules stay DOM-free too. `categories.ts`
+  returns `themeCss()` as a string; `main.ts` owns the `<style>` element.

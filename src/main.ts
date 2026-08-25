@@ -3,6 +3,7 @@
 
 import './style.css';
 import { isSignedIn, signIn } from './auth.ts';
+import { configure as configureCategories, themeCss } from './categories.ts';
 import { initChrome, setAuthState } from './chrome.ts';
 import {
   closeDrawer,
@@ -65,7 +66,43 @@ function runSelfTest(): void {
   }
 }
 
+/**
+ * STAGE 08 — the runtime colour layer. `categories.ts` produces the CSS as a
+ * pure string (it is DOM-free by contract) and this owns the single <style>
+ * element it goes into. index.html's `:root` block is the seed underneath:
+ * what the page paints before this runs, and what it falls back to for any
+ * token this does not set.
+ *
+ * Cheap enough to call on every settings edit — it is one textContent write
+ * of a few hundred bytes, and the browser restyles once.
+ */
+let themeStyle: HTMLStyleElement | null = null;
+
+/** Re-read the persisted colour state and repaint from it. */
+function resetColorsFromPrefs(): void {
+  const p = prefs();
+  configureCategories({
+    categories: p.categories,
+    fallbackCategory: p.fallbackCategory,
+    mood: p.mood,
+  });
+  applyTheme();
+}
+
+function applyTheme(): void {
+  if (!themeStyle) {
+    themeStyle = document.createElement('style');
+    themeStyle.id = 'theme-vars';
+    document.head.append(themeStyle);
+  }
+  themeStyle.textContent = themeCss();
+}
+
 function boot(): void {
+  // Colours first: the category set has to be resolved before anything reads
+  // a category, and the tokens have to be on the page before the first paint.
+  resetColorsFromPrefs();
+
   const calendar = document.getElementById('calendar');
   if (!calendar) throw new Error('#calendar is missing from index.html');
 
@@ -173,8 +210,21 @@ function boot(): void {
     },
     onDemoExit: () => {
       exitDemo();
+      // Stage 08: colour edits made in demo were never persisted, so drop
+      // them with the seed. Otherwise they would linger over the real
+      // calendar until the next reload and look like they had been saved.
+      resetColorsFromPrefs();
       signIn();
       paintAuth();
+    },
+    // Stage 08. chrome.ts has already pushed the new set into categories.ts
+    // and persisted it (or not, in demo); this re-emits the tokens and
+    // repaints whichever view is showing so labels and colours follow.
+    onColorsChange: () => {
+      applyTheme();
+      refreshDrawer();
+      if (view === 'year') renderYear(currentYear());
+      else invalidateWeeks(mountedWeeks());
     },
   });
 

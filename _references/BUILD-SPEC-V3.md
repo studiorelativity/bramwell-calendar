@@ -168,6 +168,11 @@ A sheet opened from the avatar: account row with sign-out, snap granularity
 (off, reserved). Backed entirely by existing prefs; no new storage. A
 background refresh must not close or reset the sheet.
 
+*(Extended 2026-08-24, stage 08.)* The sheet also carries a **Colors**
+section — the category list, each category's Google colorId and optional
+display colour, and the Mood selector. Same backing, same rule. See
+**Customization (stage 08)**.
+
 ## Demo mode
 
 *(Added 2026-08-23, stage 06 — the public-sharing stage.)*
@@ -217,6 +222,150 @@ enterprise-only, no consumer access.)
   so the panel and marker are visible in the demo.
 - A background month refresh must never wipe note text being typed
   (same transient-UI rule the drawer form already obeys).
+
+## Customization (stage 08)
+
+*(Added 2026-08-24, stage 08.)*
+
+Categories stop being four constants in the source and become the user's own
+list. Two colour layers per category, plus a curated surface mood. Everything
+here is prefs: no new storage, no new fetch, no new file.
+
+### Categories become data
+
+`src/categories.ts` stops holding the list and starts resolving it. The list
+lives in prefs:
+
+```
+StoredCategory       = { name, label, colorId, displayHex? }
+prefs.categories       — StoredCategory[]  (absent -> the seed below)
+prefs.fallbackCategory — name of the fallback category (absent -> "other")
+prefs.mood             — mood id (absent -> "warm")
+```
+
+- `name` is the stable key. It is what `CalendarEvent.category` carries, what
+  `data-cat` carries, and it never changes once created — **renaming edits
+  `label` only.** A new category's name is a slug of its label, uniquified;
+  the seed's four names stay `work` / `personal` / `financial` / `other`
+  forever, so no cached event is orphaned by this stage.
+- **Seed** — a fresh install, and any install predating this stage:
+
+  | name | label | colorId | displayHex |
+  |---|---|---|---|
+  | work | Work | 9 | #3056D3 |
+  | personal | Personal | 10 | #17925A |
+  | financial | Financial | 5 | #D97706 |
+  | other | Other | 8 | #64748B |
+
+  The colorIds are the ones existing events already carry; they are not
+  reassigned, now or ever. The display hexes are stage 05's approved values,
+  seeded **explicitly as overrides** so a fresh install renders identically to
+  v3 before this stage — Google's own hexes for 9/10/5/8 are different
+  colours, so this is a deliberate seed, not a coincidence.
+- Users may **add, rename, and remove**. Ceiling: **11 categories**, because
+  Google Calendar has exactly 11 event colorIds and the colorId is the only
+  channel by which an event read back from Google resolves to a category. The
+  add control is disabled at 11, with the reason stated.
+- **INVARIANT — no two categories may share a colorId.** Enforced in the UI: a
+  colorId already spoken for is disabled in every other category's dropdown.
+  Two categories on one colorId would make `categoryFromColorId` ambiguous and
+  the Google round-trip lossy. This is a data invariant, not a nicety.
+- **One category is always the fallback** (the `other` role). Unknown or
+  absent colorId on read resolves to it; it cannot be deleted and its row
+  carries no delete control. Which category holds the role is
+  `prefs.fallbackCategory`.
+- **Deleting a category does not touch its events in Google.** No bulk write,
+  no repaint of history. Those events keep their colorId; on the next read it
+  matches nothing and they resolve to the fallback. An event already in the
+  cache under a now-deleted name resolves to the fallback at render time by
+  the same rule.
+
+### Two colour layers
+
+Each category carries two colours, and they are allowed to disagree.
+
+- **Layer 1 — the Google colorId.** A dropdown of exactly Google's 11 event
+  colours, each shown as its own swatch beside Google's own name for it
+  (Lavender, Sage, Grape, Flamingo, Banana, Tangerine, Peacock, Graphite,
+  Blueberry, Basil, Tomato). This is what the Google Calendar app shows and
+  what a later read resolves through. **Changing it affects new writes only.**
+  Existing events keep the colorId they were written with; the app never mass-
+  PATCHes history to repaint them. That is out of scope by decision — a
+  bulk rewrite of a user's calendar is not something a colour control should
+  do quietly, and the failure modes (partial writes, rate limits, an
+  irreversible edit to every event) are all worse than a legend that changed.
+- **Layer 2 — the display hex, optional.** When set it overrides how Bramwell
+  renders the category on screen: bars, chips, dots, year-grid bars, drawer
+  rows, form chips. When unset, display follows the colorId's own hex.
+- When the two disagree, Bramwell and the Google app **intentionally
+  diverge**; the settings row makes that visible by showing both swatches side
+  by side. Divergence is a feature — Google's palette is fixed, the user's
+  taste is not — but it must never be a surprise.
+- The bar treatment is unchanged and applies to whatever the user picks:
+  category colour at ~16% as fill, full colour for the title and the 3px
+  spine, 5px radius. **Both layers must stay legible at arm's length, in light
+  and in dark.** Dark mode uses a brightened variant of the display colour —
+  curated for the four seed hues and for Google's eleven, derived for a custom
+  hex — because light-mode hues fail contrast on tinted dark fills (Visual
+  direction).
+- **Red stays the today convention.** Google's Tomato (colorId 11) remains
+  selectable as a category — refusing it would be arbitrary — but `--today`
+  keeps a treatment no category ever takes: a filled pill on the day number
+  plus a wash across the cell. Today is distinguished by **form**, not by hue
+  alone, so a Tomato category can never read as today. `--today` itself is
+  never a category colour and never a mood token.
+
+### Mood
+
+A curated set of surface tints: a **fixed list, not a free picker.** The
+restraint rule survives customization — the user's commitments stay the only
+strong colour on screen, and Mood only moves the quiet ground beneath them.
+
+- Five moods: **Warm** (the default: stage 05's values, unchanged), **Paper**,
+  **Cool**, **Sage**, **Dusk**. Each sets `--surface` and the four band tokens
+  (`--band-a`, `--band-b`, `--band-a-we`, `--band-b-we`), with a light variant
+  and a dark variant.
+- Every mood holds the same lightness steps between band A and band B as the
+  default, so **month-band contrast is a property of the set, not of the
+  choice.** "In dark mode the month boundary is readable from the bands alone
+  on a phone at arm's length" is a Definition-of-done item; it holds for every
+  option or the option does not ship.
+- Mood never touches `--ink*`, `--rule*`, `--today`, or any category colour.
+
+### Settings UI
+
+A **Colors** section in the existing Settings sheet (`src/chrome.ts`):
+
+- One row per category, in list order: the label (editable in place), the
+  colorId dropdown, the display swatch with a clear affordance, and a delete
+  control on every row but the fallback's.
+- An add-category row, disabled at 11.
+- The Mood selector.
+- Backed by prefs through `savePrefs`, like every other setting. **No new
+  storage class, no new file.** A background refresh must not close or reset
+  the sheet — the existing rule, unchanged.
+- **Demo mode**: customization works, in memory, and writes nothing. Same rule
+  as the demo cache — `?demo` never touches localStorage.
+
+### Ripples
+
+- `src/categories.ts` becomes prefs-backed. It stays DOM-free and free of any
+  import from `state.ts`: the stored list is pushed into it at boot by
+  `main.ts`, which keeps the import graph acyclic (`state -> gcal ->
+  categories`). It also gains the Google colour table and the mood palette —
+  the one place colour values are named.
+- Its consumers render the dynamic list instead of four hard-coded chips: the
+  event form's category chips, the day drawer's event rows (which show a
+  category's **label**, not its name), `render.ts`'s bars and chips,
+  `year.ts`'s per-day bars and hover panel.
+- `gcal.ts` writes the **fallback's** colorId for day notes rather than
+  `other`'s literally — the fallback is a role now, not a name.
+- The `:root` category custom properties in `index.html` become **seed values
+  only**: what the page paints before the first script runs. Runtime values are
+  emitted by `main.ts` into a single `<style>` element built from
+  `categories.ts`'s pure `themeCss()` string — one rule per category plus the
+  mood tokens, light and dark. Per-frame cost stays zero: `render.ts` keeps
+  setting `data-cat` and nothing else.
 
 ## Perpetual scroll mechanics
 
@@ -290,7 +439,8 @@ restraint.
 /src/render.ts      — week rows, bars, lane packing, month labels, header
 /src/year.ts        — year view: 365-day week-aligned grid
 /src/drawer.ts      — day drawer + event form (port from v2)
-/src/categories.ts  — category <-> colorId mapping
+/src/categories.ts  — category <-> colorId mapping; from stage 08 also the
+                      Google colour table, the mood palette, and themeCss()
 /src/sw.ts          — service worker
 /src/types.ts
 /src/style.css     — app stylesheet (added at stage 03)
@@ -333,11 +483,17 @@ calendar `primary`.
   roll back + toast on failure.
 - 403 rate-limit / 5xx: one retry with backoff, then surface the error.
 
-## Categories (src/categories.ts) — unchanged, existing events depend on it
+## Categories (src/categories.ts) — the seed; existing events depend on it
 
 - work → "9" (#3056D3) · personal → "10" (#17925A) ·
   financial → "5" (#D97706) · other → "8" (#64748B)
 - Unknown/absent colorId on read → "other".
+
+*(Revised 2026-08-24, stage 08.)* These four are no longer the category set —
+they are its **seed**, and the colorIds above are frozen because events already
+in the user's calendar carry them. The live set is user-defined and prefs-
+backed; "other" is the seed's fallback rather than a hard-coded name. See
+**Customization (stage 08)**.
 
 ## Definition of done
 
@@ -374,6 +530,20 @@ calendar `primary`.
 - A note saved on a day shows the cell marker and survives reload; its
   event in the Google Calendar app carries the first line as its title;
   editing to empty deletes it; a daynote never renders as a bar or chip
+- A fresh install renders identically to v3 before stage 08 — same four
+  categories, same colours, same bands
+- Add a category, give it a Google colour and a different display colour: a
+  new event in it renders in the display colour and arrives in the Google
+  Calendar app in the Google colour; both swatches are visible in Settings
+- A colorId already used by one category cannot be chosen for a second; the
+  add control is dead at 11 categories
+- Delete a non-fallback category: its existing events are untouched in Google
+  and render in the fallback colour
+- Rename a category: existing events keep their colour and their category
+- Every mood keeps the month boundary readable from the bands alone, on a
+  phone at arm's length, in light and dark
+- Colour changes persist across a reload; in `?demo` they apply and persist
+  nothing
 
 ---
 
