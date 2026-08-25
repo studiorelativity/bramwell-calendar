@@ -224,3 +224,42 @@ Requires a real Google account. `?demo` covers items 5–6 without one.
    old text comes back.
 8. Open `?demo`. Confirm two notes are visible and that editing one is
    rejected with the demo message.
+
+## Amendment — 2026-08-24 · cell marker becomes a labelled pill
+
+Requested directly: each day carrying a note shows a pill in the cell's
+bottom-right corner reading "note", white fill, black text. This replaces
+the 4px neutral dot the stage shipped; placement and semantics are
+unchanged, so nothing in the layout or exclusion logic moved.
+
+1. **`render.ts`**: the marker span is now `.notepill` and carries the
+   static text `note`, set once at cell-build time. `renderWeekRow` still
+   only toggles `hidden`, so the per-frame cost is what it was.
+2. **`style.css`**: `.notedot` renamed to `.notepill` — a dot it no longer
+   is — and restyled as a pill (`padding: 0 4px`, `border-radius: 999px`,
+   `font-size: 8px`). Fill `#fff`, text `#000`, both literal rather than
+   tokens: the request fixes the pill's colours in both themes.
+3. **Hairline added** (`1px solid var(--rule-strong)`). In light mode the
+   surface is `#faf9f7` and a `#fff` fill is very nearly invisible against
+   it — without the border the pill reads as bare floating text, not a
+   pill. The border changes neither the fill nor the text colour asked for.
+
+`.ypnote` — the year panel's note marker — is deliberately untouched. It
+sits on a date line, not in a grid cell, and there is no room there for a
+word.
+
+Evidence: `npm run build` clean (`tsc` + vite); no `.notedot` references
+remain in `src/`. Note that the count in "Automated evidence" above (91
+`.notedot` spans) refers to the pre-amendment class name.
+
+Open, folds into the human gate — no headless browser is installed, so
+neither was checked:
+
+- **Light mode legibility.** A white pill on a warm-white surface is the
+  weakest case; confirm it reads as a pill at arm's length, and in dark
+  mode confirm it is not so bright it out-shouts the event bars, which are
+  the only strong colour on screen by the spec's visual direction.
+- **Collision with "+N" on a narrow cell.** The pill is ~28px wide; a day
+  column on a 320px-wide phone is ~45px, leaving very little between it and
+  `.more` at bottom-left. Check a day that has both a note and a "+N"
+  overflow count on the narrowest phone in use.

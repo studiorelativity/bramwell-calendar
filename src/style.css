@@ -1316,20 +1316,27 @@ pre.selftest {
 /* --- day notes (stage 07) --------------------------------------------------- */
 
 /* Cell marker: bottom-RIGHT, so it never collides with "+N" at bottom-left.
-   Neutral by design — a note is not a category and must not read as one. */
-.notedot {
+   A labelled pill rather than a dot (requested 2026-08-24) — white fill,
+   black text, fixed in both themes so the pill reads the same either way.
+   Still neutral: a note is not a category and must not read as one.
+   The hairline is what keeps the pill's shape from vanishing into the light
+   surface, where #fff on #faf9f7 is all but the same color. */
+.notepill {
   position: absolute;
   right: 4px;
   bottom: 3px;
-  width: 4px;
-  height: 4px;
+  padding: 0 4px;
+  border: 1px solid var(--rule-strong);
   border-radius: 999px;
-  background: var(--ink-muted);
-  opacity: 0.6;
+  background: #fff;
+  color: #000;
+  font-size: 8px;
+  line-height: 12px;
+  letter-spacing: 0.02em;
   pointer-events: none;
 }
 
-.notedot[hidden] {
+.notepill[hidden] {
   display: none;
 }
 

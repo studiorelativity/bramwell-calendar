@@ -156,8 +156,14 @@ export function createWeekNode(): HTMLElement {
     col.append(
       Object.assign(document.createElement('span'), { className: 'dnum' }),
       Object.assign(document.createElement('span'), { className: 'more' }),
-      // Bottom-RIGHT; "+N" owns bottom-left, so the two never collide.
-      Object.assign(document.createElement('span'), { className: 'notedot', hidden: true }),
+      // Bottom-RIGHT; "+N" owns bottom-left, so the two never collide. The
+      // label is static, so it is set once here and repaints only toggle
+      // `hidden` — the marker still costs nothing per frame.
+      Object.assign(document.createElement('span'), {
+        className: 'notepill',
+        textContent: 'note',
+        hidden: true,
+      }),
     );
     cols.append(col);
   }
