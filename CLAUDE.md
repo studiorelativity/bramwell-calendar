@@ -24,6 +24,7 @@ verification artifacts only.
 | Demo mode, README, open-source prep | 06_share | 06_share/CONTEXT.md |
 | Day notes (extended-property events) | 07_notes | 07_notes/CONTEXT.md |
 | Category/colour customization, mood | 08_customize | 08_customize/CONTEXT.md |
+| Motion system, inline day expansion | 09_redesign | 09_redesign/CONTEXT.md |
 
 ## Rules
 - One stage per session. Read only that stage's CONTEXT.md and the spec
