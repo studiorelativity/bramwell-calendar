@@ -88,9 +88,11 @@ too, pre-filled with today.
 filled pill on the day number plus a wash across the day's cell, in `--today`
 — **one indicator at two scales**, so moving between calendar and year never
 asks the eye to relearn it. `--today` is the single reserved hue outside the
-four categories and is used for nothing else; red-for-today is the convention
-every desktop calendar already teaches, so it reads as "now" rather than as a
-fifth category. The wash is lighter in the calendar than in the year grid: a
+four categories and is used for nothing else. *(Revised 2026-09-02: `--today`
+is teal — light `#0d9488`, dark `#2dd4bf`. It was red per the desktop-calendar
+convention until the year-progress lines below claimed red for "gone"; the
+scheme is now red = past, teal = now, yellow = to come.)* The wash is lighter
+in the calendar than in the year grid: a
 calendar cell is many times the area, and equal alpha over a bigger field
 reads as more emphasis, not the same.
 
@@ -100,6 +102,22 @@ the ramps read as lighting artifacts rather than meaning, they clipped hard at
 cell edges, and they marked a region instead of a day. A **1.5px inset outline
 on the cell** — around a tall, near-empty year cell an outline encloses
 nothing, so it parses as a form field.
+
+*(Appended 2026-09-02.)* **Year progress lines.** Every real day cell in the
+year grid carries a 2px line along its top edge: **solid `--line-past` red**
+on days already gone, **dashed `--line-future` yellow** (4px dash / 4px gap)
+on days still to come, and **nothing on today** — its pill and wash mark
+"now", and the gap in the line is itself the cursor. The lines exist to make
+the year's remaining runway visible at a glance. Hues are muted brick and
+amber, tuned per theme (`--line-past`/`--line-future` tokens beside the
+others), quieter than the event bars. A wholly past year is all solid; a
+wholly future year is all dashed — consistent semantics, no special casing.
+
+*(Appended 2026-09-02.)* **Note marker in the year grid.** A day carrying a
+day note shows a "Note" pill in the cell's bottom-LEFT corner — the year-scale
+sibling of the calendar's bottom-right `.notepill`: white fill, black text,
+fixed in both themes, with the same hairline that keeps it alive on the light
+surface, at **70% opacity** so any event bar it overlaps stays readable.
 
 The **Today button goes to today without changing the view**: in the calendar
 it scrolls and re-snaps; in the year grid it pages back to the current year if
@@ -310,12 +328,14 @@ Each category carries two colours, and they are allowed to disagree.
   curated for the four seed hues and for Google's eleven, derived for a custom
   hex — because light-mode hues fail contrast on tinted dark fills (Visual
   direction).
-- **Red stays the today convention.** Google's Tomato (colorId 11) remains
-  selectable as a category — refusing it would be arbitrary — but `--today`
-  keeps a treatment no category ever takes: a filled pill on the day number
-  plus a wash across the cell. Today is distinguished by **form**, not by hue
-  alone, so a Tomato category can never read as today. `--today` itself is
-  never a category colour and never a mood token.
+- **Today keeps its own reserved hue.** *(Reworded 2026-09-02: the hue is
+  teal now — see "Today, in both views" — but the rule is unchanged.)*
+  Google's Tomato (colorId 11) remains selectable as a category — refusing it
+  would be arbitrary — but `--today` keeps a treatment no category ever
+  takes: a filled pill on the day number plus a wash across the cell. Today
+  is distinguished by **form**, not by hue alone, so no category can ever
+  read as today. `--today` itself is never a category colour and never a
+  mood token.
 
 ### Mood
 

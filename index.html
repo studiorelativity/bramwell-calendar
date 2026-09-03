@@ -46,11 +46,17 @@
         --rule-strong: #d6d2ca;
         --hover: rgba(28, 25, 23, 0.045);
         /* Today's own colour — the ONE hue outside the four categories, and
-           the only thing it is ever used for. Red-for-today is the convention
-           every desktop calendar already teaches, so it reads as "now" rather
-           than as a fifth category or an error. Channels too, for the wash. */
-        --today: #e11d48;
-        --today-rgb: 225, 29, 72;
+           the only thing it is ever used for. Teal since the year-progress
+           lines (below) claimed red for "gone": the scheme is red = past,
+           teal = now, yellow = still to come. Channels too, for the wash. */
+        --today: #0d9488;
+        --today-rgb: 13, 148, 136;
+        /* Year-progress lines along the top edge of year-grid cells: solid
+           red for days gone, dashed yellow for days to come. Muted brick and
+           amber rather than pure red/yellow, so they hold on the near-white
+           bands without shouting over the event bars. */
+        --line-past: #c2413b;
+        --line-future: #c9990a;
 
         --safe-top: env(safe-area-inset-top, 0px);
         --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -74,8 +80,10 @@
           --rule-strong: #3a342c;
           --hover: rgba(243, 241, 238, 0.05);
           /* Lifted for the dark ground, same as the category hues below. */
-          --today: #fb7185;
-          --today-rgb: 251, 113, 133;
+          --today: #2dd4bf;
+          --today-rgb: 45, 212, 191;
+          --line-past: #e0655f;
+          --line-future: #d9b545;
 
           /* Brightened category variants: the light-mode hues fail contrast
              on tinted dark fills. */

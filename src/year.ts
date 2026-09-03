@@ -269,6 +269,9 @@ export function renderYear(year: number): void {
     cell.dataset.band = civil.month % 2 === 0 ? '1' : '0';
     if (dow >= 5) cell.dataset.we = '1';
     if (day === todayDay) cell.dataset.today = '1';
+    // Year progress: past days rule solid, future days rule dashed (CSS).
+    // Today carries neither — its pill + wash already say "now".
+    else cell.dataset.rel = day < todayDay ? 'past' : 'future';
     if (civil.day === 1) cell.dataset.first = '1';
 
     const dowEl = document.createElement('span');
@@ -297,6 +300,16 @@ export function renderYear(year: number): void {
         bars.append(bar);
       }
       cell.append(bars);
+    }
+    if (noteDays.has(day)) {
+      // Bottom-LEFT corner marker, the year-scale sibling of the calendar's
+      // .notepill. Absolute in CSS, so append order does not matter.
+      cell.append(
+        Object.assign(document.createElement('span'), {
+          className: 'ynotepill',
+          textContent: 'Note',
+        }),
+      );
     }
     grid.append(cell);
   }

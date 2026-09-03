@@ -514,6 +514,33 @@ pre.selftest {
   font-weight: 700;
 }
 
+/* Year progress, read along the top edge of every cell: solid red for days
+   gone, dashed yellow for days still to come, nothing on today — its pill and
+   wash already mark "now", and the gap in the line is itself the cursor.
+   An ::before overlay, not a border: borders would move the grid, and the
+   cell's box-shadow is already spent on the month rule and hover wash. */
+.ycell[data-rel]::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  pointer-events: none;
+}
+
+.ycell[data-rel='past']::before {
+  background: var(--line-past);
+}
+
+/* Dashes via gradient rather than border-style, for the same no-layout
+   reason as above. */
+.ycell[data-rel='future']::before {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--line-future) 0 4px,
+    transparent 4px 8px
+  );
+}
+
 
 
 /* One thin bar per event, longest-first, so a multi-day event lines up
@@ -1532,6 +1559,26 @@ pre.selftest {
 
 .notepill[hidden] {
   display: none;
+}
+
+/* Year grid: the same pill at year scale, bottom-LEFT (requested 2026-09-02)
+   — the day number owns the top of a ycell, so the corners never fight.
+   70% opacity so the event bars it may overlap in a busy cell stay readable
+   through it; the hairline again keeps the shape alive on the light surface. */
+.ynotepill {
+  position: absolute;
+  left: 3px;
+  bottom: 2px;
+  padding: 0 4px;
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  background: #fff;
+  color: #000;
+  opacity: 0.7;
+  font-size: 8px;
+  line-height: 12px;
+  letter-spacing: 0.02em;
+  pointer-events: none;
 }
 
 /* Year view: the panel's date line carries the marker instead of spending one
