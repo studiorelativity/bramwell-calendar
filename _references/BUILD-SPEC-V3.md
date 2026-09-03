@@ -141,7 +141,9 @@ the only control that switches views.
   same indicator the year view uses, see "Year view". Always findable via a
   "Today" button in the header that animates the scroll back and re-snaps.
 - Tap/click a day → day drawer (port from v2) with that day's events and the
-  add/edit form.
+  add/edit form. *(Superseded stage 09: the overlay drawer is replaced by
+  inline day expansion — see "Visual direction v4" and "Motion". The
+  drawer's content contract carries over unchanged.)*
 
 ## First-run and connection state
 
@@ -385,6 +387,11 @@ A **Colors** section in the existing Settings sheet (`src/chrome.ts`):
 *(Revised 2026-08-23, stage 05. Approved reference: `05_polish/mock.html` —
 the spec describes intent, the mock fixes token values.)*
 
+*(Superseded in part 2026-08-29, stage 09: where "Visual direction v4 —
+Night Depth" below conflicts with this section — elevation, hover, today
+marker, band/hairline structure — v4 wins. Clauses v4 does not address
+still govern.)*
+
 Modern, clean, inviting. Warm neutral surfaces, generous whitespace,
 restrained type (system stack); the user's commitments are the only strong
 color on screen. No gradients-for-decoration, no card chrome, no elevation
@@ -406,6 +413,54 @@ Day numbers are tabular, top-right. Today's number sits in a filled ink
 circle — findable in under a second on a full grid. Desktop day cells take
 a faint hover wash. Dark mode honors `prefers-color-scheme` with the same
 restraint.
+
+## Visual direction v4 — Night Depth (stage 09)
+
+*(Added 2026-08-29, stage 09. Approved reference: the "Bramwell Calendar"
+design canvas — Night Depth week-view artboard and motion-primitives
+artboard. The canvas fixes token values; this section describes intent.
+Where it conflicts with "Visual direction" above, this section wins.)*
+
+- Layered dark-first. Day cells are rounded (12px) raised tiles on a
+  near-black ground, not hairline-ruled grid cells. Month structure reads
+  through tile surface value (in-month vs. out-month, weekend shade), not
+  bands and hairlines alone.
+- Exactly three elevation levels: resting cell, hovered cell, open day.
+  Nothing else casts a shadow.
+- Hover: the cell lifts (translateY(-2px)), its shadow deepens, and a 1px
+  accent ring fades in. This replaces v3's "faint hover wash" and repeals
+  its "no elevation or scaling on rows" clause.
+- Today: accent inset ring on the cell plus accent day number — replaces
+  the filled ink pill and cell wash.
+- The overlay day drawer is replaced by **inline day expansion**: the day
+  grows in place within its week row (row height and the row's column
+  tracks animate together), neighbors compress, and the expanded day
+  carries everything the drawer carried — event list, add/edit form,
+  notes panel, the transient-UI rule. One day open at a time; opening
+  another collapses the first; Escape collapses; scrolling does not
+  force-collapse.
+- Light mode receives the same structure with inverted surface logic;
+  dark remains the design-lead mode.
+
+## Motion (stage 09)
+
+- Motion tokens live in `:root` beside the color tokens:
+  `--t-fast: 140ms`, `--t-base: 240ms`, `--t-open: 380ms`,
+  `--ease-out: cubic-bezier(0.22, 1, 0.36, 1)`,
+  `--ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1)`.
+  No transition or animation value may appear outside the token layer.
+- Choreography: hover enters in `--t-fast --ease-out`, leaves in
+  `--t-base`. Expand runs `--t-open --ease-spring`; expanded content
+  staggers in 40ms apart (fade + 6px rise). Collapse runs `--t-base
+  --ease-out`, content fades first, no stagger.
+- One shared enter/exit utility solves display:none-vs-animation once
+  (`@starting-style` + `transition-behavior: allow-discrete` on enter,
+  `transitionend` on exit). Components never write their own transitions.
+- `prefers-reduced-motion`: every animation collapses to 80ms
+  opacity-only.
+- Performance: hover animates compositor properties only. The expand
+  row-height animation is the one permitted layout animation and must be
+  contained to the scroller; 60fps on a mid phone is a gate criterion.
 
 ## PWA requirements
 

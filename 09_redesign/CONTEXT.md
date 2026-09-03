@@ -1,11 +1,11 @@
 # Stage 09 — Redesign (Night Depth: motion system + inline day)
 
-**Status: PROPOSED.** Direction chosen 2026-08-29 ("Night Depth", design
-canvas in Claude artifacts: week-view artboard + motion-primitives
-artboard). Per the fix-upstream rule, the spec must gain a "Visual
-direction v4 (Night Depth)" section and a "Motion" section from the
-canvas before this stage opens; the drawer sections it obsoletes get
-marked superseded, not deleted.
+**Status: APPROVED 2026-08-29.** Direction chosen 2026-08-29 ("Night
+Depth"; approved reference: the "Bramwell Calendar" design canvas —
+week-view + motion-primitives artboards). Per the fix-upstream rule the
+spec gained "Visual direction v4 — Night Depth" and "Motion" sections,
+and the superseded drawer/visual clauses are marked in place. This stage
+is designed to run in Claude Code from this contract alone.
 
 ## What this stage is
 
@@ -41,8 +41,8 @@ If the plan can't make the virtualizer do this cleanly, stop and revise
 this contract — do not fake it with an overlay.
 
 ## Inputs
-- L3: `../_references/BUILD-SPEC-V3.md` — "Visual direction v4" + "Motion"
-  (to be added), "Rendering", "Scrolling", "Day drawer" (superseded parts)
+- L3: `../_references/BUILD-SPEC-V3.md` — "Visual direction v4 — Night
+  Depth", "Motion", "Rendering", "Scrolling", "Day drawer" (superseded parts)
 - L3: `../_references/conventions.md`
 - L3: the design canvas (Night Depth week view + motion primitives)
 - L4: `src/scroll.ts`, `src/render.ts`, `src/drawer.ts`, `src/style.css`,
